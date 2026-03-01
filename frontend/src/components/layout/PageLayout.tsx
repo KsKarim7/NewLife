@@ -8,9 +8,21 @@ interface PageLayoutProps {
   children: ReactNode;
   title?: string;
   searchPlaceholder?: string;
+  periodValue?: string;
+  onPeriodChange?: (value: string) => void;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
 }
 
-export function PageLayout({ children, title, searchPlaceholder }: PageLayoutProps) {
+export function PageLayout({
+  children,
+  title,
+  searchPlaceholder,
+  periodValue,
+  onPeriodChange,
+  searchValue,
+  onSearchChange,
+}: PageLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -32,6 +44,10 @@ export function PageLayout({ children, title, searchPlaceholder }: PageLayoutPro
       >
         <Header
           searchPlaceholder={searchPlaceholder}
+          searchValue={searchValue}
+          onSearchChange={onSearchChange}
+          periodValue={periodValue}
+          onPeriodChange={onPeriodChange}
           onMenuClick={() => setSidebarOpen(true)}
         />
         <main className="flex-1 p-4 md:p-6 overflow-auto">

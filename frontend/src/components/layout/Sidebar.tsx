@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Package,
+  Users,
   ShoppingCart,
   Undo2,
   Truck,
@@ -20,6 +21,7 @@ import { useState } from "react";
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Customers", url: "/customers", icon: Users },
   { title: "Orders & Sales", url: "/orders", icon: ShoppingCart },
   { title: "Sales Returns", url: "/sales-returns", icon: Undo2 },
   { title: "Purchases", url: "/purchases", icon: Truck },

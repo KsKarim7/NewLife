@@ -7,14 +7,42 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/auth/AuthContext";
 
 interface HeaderProps {
   searchPlaceholder?: string;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  periodValue?: string;
+  onPeriodChange?: (value: string) => void;
   onMenuClick?: () => void;
 }
 
-export function Header({ searchPlaceholder = "Search products, orders, customers...", onMenuClick }: HeaderProps) {
+export function Header({
+  searchPlaceholder = "Search products, orders, customers...",
+  searchValue,
+  onSearchChange,
+  periodValue,
+  onPeriodChange,
+  onMenuClick,
+}: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ").filter(Boolean);
+    if (parts.length === 1) {
+      return parts[0].charAt(0).toUpperCase();
+    }
+    const first = parts[0].charAt(0);
+    const last = parts[parts.length - 1].charAt(0);
+    return `${first}${last}`.toUpperCase();
+  };
+
+  const initials = getInitials(user?.name);
 
   return (
     <>
@@ -34,6 +62,8 @@ export function Header({ searchPlaceholder = "Search products, orders, customers
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={searchPlaceholder}
+              value={searchValue ?? ""}
+              onChange={(e) => onSearchChange?.(e.target.value)}
               className="pl-9 bg-muted border-0 h-9 text-sm"
             />
           </div>
@@ -51,7 +81,10 @@ export function Header({ searchPlaceholder = "Search products, orders, customers
         <div className="flex items-center gap-2 md:gap-4">
           {/* Date range — hidden on mobile */}
           <div className="hidden md:block">
-            <Select defaultValue="7">
+            <Select
+              value={periodValue ?? "7"}
+              onValueChange={(value) => onPeriodChange?.(value)}
+            >
               <SelectTrigger className="w-[150px] h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -76,17 +109,24 @@ export function Header({ searchPlaceholder = "Search products, orders, customers
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 text-sm outline-none min-h-[44px]">
               <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
-                JD
+                {initials}
               </div>
-              <span className="hidden md:block font-medium text-foreground">John Doe</span>
+              <span className="hidden md:block font-medium text-foreground">{user?.name ?? "User"}</span>
               <span className="hidden md:block text-muted-foreground">•</span>
-              <span className="hidden md:block text-muted-foreground text-xs">Owner</span>
+              <span className="hidden md:block text-muted-foreground text-xs">{user?.role ?? "User"}</span>
               <ChevronDown className="hidden md:block h-3 w-3 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>Settings</DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => {
+                  void logout();
+                }}
+              >
+                Logout
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -99,6 +139,8 @@ export function Header({ searchPlaceholder = "Search products, orders, customers
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={searchPlaceholder}
+              value={searchValue ?? ""}
+              onChange={(e) => onSearchChange?.(e.target.value)}
               className="pl-9 bg-muted border-0 h-9 text-sm"
               autoFocus
             />
