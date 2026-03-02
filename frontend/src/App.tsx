@@ -13,7 +13,7 @@ import PurchaseReturnsList from "./pages/PurchaseReturnsList";
 import ExpensesList from "./pages/ExpensesList";
 import StockMovementLog from "./pages/StockMovementLog";
 import Reports from "./pages/Reports";
-import SettingsPage from "./pages/SettingsPage";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
@@ -61,7 +61,7 @@ const App = () => (
               <Route path="/expenses" element={<ExpensesList />} />
               <Route path="/stock-log" element={<StockMovementLog />} />
               <Route path="/reports" element={<Reports />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

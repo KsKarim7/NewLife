@@ -5,6 +5,8 @@ const {
   logout,
   refreshToken,
   getMe,
+  changeOwnPassword,
+  changeOwnEmail,
 } = require('../controllers/authController');
 const protect = require('../middleware/protect');
 
@@ -22,6 +24,25 @@ router.post(
 router.post('/logout', protect, logout);
 router.post('/refresh', refreshToken);
 router.get('/me', protect, getMe);
+
+router.patch(
+  '/me/password',
+  protect,
+  [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword')
+      .isLength({ min: 8 })
+      .withMessage('New password must be at least 8 characters'),
+  ],
+  changeOwnPassword
+);
+
+router.patch(
+  '/me/email',
+  protect,
+  [body('newEmail').isEmail().withMessage('Valid email is required')],
+  changeOwnEmail
+);
 
 module.exports = router;
 

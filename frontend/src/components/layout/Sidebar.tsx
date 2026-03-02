@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Package,
@@ -17,6 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/auth/AuthContext";
+import { getSettings } from "@/api/settingsApi";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -29,7 +32,7 @@ const navItems = [
   { title: "Expenses", url: "/expenses", icon: Wallet },
   { title: "Stock Log", url: "/stock-log", icon: Activity },
   { title: "Reports", url: "/reports", icon: BarChart3 },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Settings", url: "/settings", icon: Settings, ownerOnly: true },
 ];
 
 interface AppSidebarProps {
@@ -39,6 +42,21 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const location = useLocation();
+  const { user } = useAuth();
+
+  // Fetch settings to display logo
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: getSettings,
+  });
+
+  // Filter nav items based on user role
+  const visibleNavItems = navItems.filter((item) => {
+    if ((item as any).ownerOnly && user?.role !== "owner") {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <aside
@@ -49,15 +67,23 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 h-[60px] border-b border-sidebar-border">
-        <Package className="h-6 w-6 text-secondary flex-shrink-0" />
+        {settings?.store_info.logo_url ? (
+          <img
+            src={settings.store_info.logo_url}
+            alt="Store Logo"
+            className="h-6 w-6 object-contain flex-shrink-0"
+          />
+        ) : (
+          <Package className="h-6 w-6 text-secondary flex-shrink-0" />
+        )}
         {!collapsed && <span className="text-lg font-bold tracking-tight">IMS</span>}
       </div>
 
       {/* Nav */}
       <nav className="flex-1 py-3 overflow-y-auto">
         <ul className="space-y-0.5 px-2">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.url || 
+          {visibleNavItems.map((item) => {
+            const isActive = location.pathname === item.url ||
               (item.url !== "/" && location.pathname.startsWith(item.url));
             return (
               <li key={item.url}>

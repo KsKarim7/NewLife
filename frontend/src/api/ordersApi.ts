@@ -68,7 +68,7 @@ export interface CreateOrderPayload {
 }
 
 export interface AddPaymentPayload {
-  amount_paisa: number;
+  amount: number;
   note?: string;
 }
 

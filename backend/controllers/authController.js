@@ -59,6 +59,7 @@ exports.login = async (req, res) => {
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user._id);
 
+  user.last_login = new Date();
   const hashedRefresh = await bcrypt.hash(refreshToken, 10);
   user.refreshToken = hashedRefresh;
   await user.save();
@@ -157,6 +158,72 @@ exports.getMe = async (req, res) => {
         role: user.role,
       },
     },
+  });
+};
+
+exports.changeOwnPassword = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+    });
+  }
+
+  const { currentPassword, newPassword } = req.body;
+  const user = req.user;
+
+  // Verify current password
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) {
+    return res.status(401).json({
+      success: false,
+      message: 'Current password is incorrect',
+    });
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  user.password = hashedPassword;
+  await user.save();
+
+  return res.json({
+    success: true,
+    message: 'Password changed successfully',
+  });
+};
+
+exports.changeOwnEmail = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+    });
+  }
+
+  const { newEmail } = req.body;
+  const user = req.user;
+
+  // Check if email already exists
+  const existingUser = await User.findOne({
+    email: newEmail.toLowerCase(),
+    _id: { $ne: user._id },
+  });
+
+  if (existingUser) {
+    return res.status(409).json({
+      success: false,
+      message: 'Email already in use',
+    });
+  }
+
+  user.email = newEmail.toLowerCase();
+  await user.save();
+
+  return res.json({
+    success: true,
+    message: 'Email changed successfully',
   });
 };
 

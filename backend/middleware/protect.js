@@ -25,6 +25,12 @@ const protect = async (req, res, next) => {
         .json({ success: false, message: 'Not authorized' });
     }
 
+    if (!user.is_active) {
+      return res
+        .status(401)
+        .json({ success: false, message: 'Account is inactive' });
+    }
+
     req.user = user;
     next();
   } catch (err) {

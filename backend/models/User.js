@@ -24,6 +24,16 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
     },
+    phone: {
+      type: String,
+    },
+    is_active: {
+      type: Boolean,
+      default: true,
+    },
+    last_login: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

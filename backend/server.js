@@ -18,6 +18,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 const protect = require('./middleware/protect');
 
 dotenv.config();
@@ -46,6 +47,7 @@ app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/inventory', inventoryRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/reports', protect, reportRoutes);
+app.use('/api/v1/settings', protect, settingsRoutes);
 
 app.use(errorHandler);
 
