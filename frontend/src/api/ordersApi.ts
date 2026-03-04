@@ -151,3 +151,11 @@ export const cancelOrder = async (id: string): Promise<Order> => {
 
   return normalizeOrder(response.data.data.order);
 };
+
+export const deleteOrder = async (id: string): Promise<void> => {
+  const response = await axiosClient.delete(`/orders/${id}`);
+
+  if (!response.data?.success) {
+    throw new Error(response.data?.message || "Failed to delete order");
+  }
+};

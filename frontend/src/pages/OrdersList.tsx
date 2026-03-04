@@ -3,10 +3,11 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
+import { formatDateTime } from "@/utils/formatDate";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X } from "lucide-react";
+import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -24,12 +25,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getOrders, type Order, createOrder, type CreateOrderPayload } from "@/api/ordersApi";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { getOrders, type Order, createOrder, type CreateOrderPayload, addPayment, cancelOrder, deleteOrder } from "@/api/ordersApi";
 import { getCustomers, type Customer } from "@/api/customersApi";
 import { getProducts, type Product } from "@/api/productsApi";
 
+interface AxiosError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const paisaToTaka = (paisa: number) => {
   return paisa / 100;
+};
+
+const toPriceNumber = (value: string | number): number => {
+  if (typeof value === 'number') return value / 100;
+  const num = parseFloat(String(value));
+  if (Number.isNaN(num)) return 0;
+  return num;
 };
 
 export default function OrdersList() {
@@ -50,6 +84,20 @@ export default function OrdersList() {
     { product_id: "", qty: 1, unit_price: "", vat_percent: 0 }
   ]);
   const [amountReceived, setAmountReceived] = useState("");
+
+  // Payment dialog state
+  const [payingOrder, setPayingOrder] = useState<Order | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentNote, setPaymentNote] = useState("");
+
+  // Cancel dialog state
+  const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
+
+  // View order sheet state
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+
+  // Delete order dialog state
+  const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -88,10 +136,66 @@ export default function OrdersList() {
       toast({ title: "Order created successfully" });
       closeSheet();
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = (error as AxiosError)?.response?.data?.message || (error as Error)?.message || "Something went wrong";
       toast({
         title: "Failed to create order",
-        description: error?.message ?? "Something went wrong",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addPaymentMutation = useMutation({
+    mutationFn: ({ id, amount, note }: { id: string; amount: number; note?: string }) =>
+      addPayment(id, { amount, note }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast({ title: "Payment recorded successfully" });
+      setPayingOrder(null);
+      setPaymentAmount("");
+      setPaymentNote("");
+    },
+    onError: (error: unknown) => {
+      const errorMessage = (error as AxiosError)?.response?.data?.message || (error as Error)?.message || "Something went wrong";
+      toast({
+        title: "Failed to record payment",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelOrderMutation = useMutation({
+    mutationFn: (id: string) => cancelOrder(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast({ title: "Order cancelled successfully" });
+      setCancellingOrder(null);
+    },
+    onError: (error: unknown) => {
+      const errorMessage = (error as AxiosError)?.response?.data?.message || (error as Error)?.message || "Something went wrong";
+      toast({
+        title: "Failed to cancel order",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteOrderMutation = useMutation({
+    mutationFn: (id: string) => deleteOrder(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast({ title: "Order deleted successfully" });
+      setDeletingOrder(null);
+      setViewingOrder(null);
+    },
+    onError: (error: unknown) => {
+      const errorMessage = (error as AxiosError)?.response?.data?.message || (error as Error)?.message || "Something went wrong";
+      toast({
+        title: "Failed to delete order",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -103,9 +207,9 @@ export default function OrdersList() {
   const totalPages = pagination?.totalPages ?? 1;
 
   // Calculate stats
-  const totalReceived = orders.reduce((sum, o) => sum + paisaToTaka(o.amount_received_paisa), 0);
-  const totalDue = orders.reduce((sum, o) => sum + paisaToTaka(o.amount_due_paisa), 0);
-  const totalRevenue = orders.reduce((sum, o) => sum + paisaToTaka(o.total_paisa), 0);
+  const totalReceived = orders.reduce((sum, o) => sum + toPriceNumber(o.amount_received_paisa), 0);
+  const totalDue = orders.reduce((sum, o) => sum + toPriceNumber(o.amount_due_paisa), 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + toPriceNumber(o.total_paisa), 0);
 
   // Helper functions for create order
   const openAddSheet = () => {
@@ -141,6 +245,57 @@ export default function OrdersList() {
     setOrderLines(newLines);
   };
 
+  const handleProductSelect = (index: number, productId: string) => {
+    const selectedProduct = (productsData?.products ?? []).find(p => p._id === productId);
+    const newLines = [...orderLines];
+    newLines[index] = {
+      ...newLines[index],
+      product_id: productId,
+      unit_price: selectedProduct?.selling_price_taka ?? "",
+    };
+    setOrderLines(newLines);
+  };
+
+  const handleOpenPaymentDialog = (order: Order) => {
+    const amountDue = toPriceNumber(order.amount_due_paisa);
+    setPayingOrder(order);
+    setPaymentAmount(amountDue.toFixed(2));
+    setPaymentNote("");
+  };
+
+  const handleSubmitPayment = () => {
+    if (!payingOrder || !paymentAmount) return;
+    const amount = Math.round(parseFloat(paymentAmount));
+    addPaymentMutation.mutate({
+      id: payingOrder._id,
+      amount,
+      note: paymentNote || undefined,
+    });
+  };
+
+  const handleOpenCancelDialog = (order: Order) => {
+    setCancellingOrder(order);
+  };
+
+  const handleConfirmCancel = () => {
+    if (!cancellingOrder) return;
+    cancelOrderMutation.mutate(cancellingOrder._id);
+  };
+
+  const handleOpenViewSheet = (order: Order) => {
+    setViewingOrder(order);
+  };
+
+  const handleOpenDeleteDialog = (order: Order) => {
+    setViewingOrder(null);
+    setDeletingOrder(order);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingOrder) return;
+    deleteOrderMutation.mutate(deletingOrder._id);
+  };
+
   const handleSubmitOrder = () => {
     if (!customerName.trim() || !customerPhone.trim()) {
       toast({
@@ -169,7 +324,7 @@ export default function OrdersList() {
         unit_price: line.unit_price,
         vat_percent: line.vat_percent,
       })),
-      amount_received: amountReceived ? parseInt(amountReceived) * 100 : undefined,
+      amount_received: amountReceived ? parseInt(amountReceived) : undefined,
     };
 
     createOrderMutation.mutate(payload);
@@ -282,7 +437,7 @@ export default function OrdersList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                {["Order No", "Date & Time", "Customer", "Items", "Total", "Received", "Due", "Status"].map(h => (
+                {["Order No", "Date & Time", "Customer", "Items", "Total", "Received", "Due", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left text-table-header uppercase text-muted-foreground px-4 py-3">{h}</th>
                 ))}
               </tr>
@@ -291,14 +446,14 @@ export default function OrdersList() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border">
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
                     ))}
                   </tr>
                 ))
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                     No orders found
                   </td>
                 </tr>
@@ -309,12 +464,45 @@ export default function OrdersList() {
                     <td className="px-4 py-3 text-table-body text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-3 text-table-body text-card-foreground">{o.customer.name}</td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">{o.lines.length}</td>
-                    <td className="px-4 py-3 text-table-body font-medium">{formatCurrency(paisaToTaka(o.total_paisa))}</td>
-                    <td className="px-4 py-3 text-table-body text-success">{formatCurrency(paisaToTaka(o.amount_received_paisa))}</td>
+                    <td className="px-4 py-3 text-table-body font-medium">{formatCurrency(toPriceNumber(o.total_paisa))}</td>
+                    <td className="px-4 py-3 text-table-body text-success">{formatCurrency(toPriceNumber(o.amount_received_paisa))}</td>
                     <td className="px-4 py-3 text-table-body text-destructive font-medium">
-                      {o.amount_due_paisa > 0 ? formatCurrency(paisaToTaka(o.amount_due_paisa)) : "—"}
+                      {o.amount_due_paisa > 0 ? formatCurrency(toPriceNumber(o.amount_due_paisa)) : "—"}
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={orderStatusToStatusType(o.status)} /></td>
+                    <td className="px-4 py-3 text-table-body">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenViewSheet(o)}
+                          className="text-xs"
+                          title="View order details"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        {(o.status === "Confirmed" || o.status === "Partially Paid") && o.amount_due_paisa > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenPaymentDialog(o)}
+                            className="text-xs"
+                          >
+                            Pay
+                          </Button>
+                        )}
+                        {o.status !== "Cancelled" && o.status !== "Returned" && o.status !== "Paid" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenCancelDialog(o)}
+                            className="text-xs text-destructive hover:text-destructive"
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -347,10 +535,21 @@ export default function OrdersList() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <p className="font-bold text-sm">{formatCurrency(paisaToTaka(o.total_paisa))}</p>
-                  {o.amount_due_paisa > 0 && <p className="text-xs text-destructive font-medium">Due: {formatCurrency(paisaToTaka(o.amount_due_paisa))}</p>}
+                  <p className="font-bold text-sm">{formatCurrency(toPriceNumber(o.total_paisa))}</p>
+                  {o.amount_due_paisa > 0 && <p className="text-xs text-destructive font-medium">Due: {formatCurrency(toPriceNumber(o.amount_due_paisa))}</p>}
                 </div>
-                <StatusBadge status={orderStatusToStatusType(o.status)} />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenViewSheet(o)}
+                    className="h-7 w-7 p-0"
+                    title="View order details"
+                  >
+                    <Eye className="h-3 w-3" />
+                  </Button>
+                  <StatusBadge status={orderStatusToStatusType(o.status)} />
+                </div>
               </div>
             </div>
           ))
@@ -441,7 +640,7 @@ export default function OrdersList() {
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium">Product *</label>
-                    <Select value={line.product_id} onValueChange={(value) => handleOrderLineChange(index, "product_id", value)}>
+                    <Select value={line.product_id} onValueChange={(value) => handleProductSelect(index, value)}>
                       <SelectTrigger className="h-8 text-sm">
                         <SelectValue placeholder="Select product" />
                       </SelectTrigger>
@@ -521,6 +720,228 @@ export default function OrdersList() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Payment Dialog */}
+      <Dialog open={payingOrder !== null} onOpenChange={(open) => !open && setPayingOrder(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Add a payment for order {payingOrder?.order_number}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Amount Due (Tk)</label>
+              <p className="text-lg font-semibold text-muted-foreground">
+                {payingOrder ? formatCurrency(toPriceNumber(payingOrder.amount_due_paisa)) : "—"}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Amount Paying (Tk) *</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                placeholder="Enter amount"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Note (Optional)</label>
+              <Input
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="Payment note or reference"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPayingOrder(null)}
+              disabled={addPaymentMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitPayment}
+              disabled={addPaymentMutation.isPending || !paymentAmount}
+            >
+              {addPaymentMutation.isPending ? "Recording..." : "Record Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Order AlertDialog */}
+      <AlertDialog open={cancellingOrder !== null} onOpenChange={(open) => !open && setCancellingOrder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel order {cancellingOrder?.order_number}? This will restore the stock and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogCancel disabled={cancelOrderMutation.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmCancel}
+            disabled={cancelOrderMutation.isPending}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {cancelOrderMutation.isPending ? "Cancelling..." : "Cancel Order"}
+          </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* View Order Sheet */}
+      <Sheet open={viewingOrder !== null} onOpenChange={(open) => !open && setViewingOrder(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Order Details</SheetTitle>
+            <SheetDescription>
+              {viewingOrder?.order_number}
+            </SheetDescription>
+          </SheetHeader>
+
+          {viewingOrder && (
+            <div className="mt-6 space-y-6">
+              {/* Order Header */}
+              <div className="space-y-2 border-b pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Date & Time</p>
+                    <p className="font-medium">{formatDateTime(viewingOrder.createdAt)}</p>
+                  </div>
+                  <StatusBadge status={orderStatusToStatusType(viewingOrder.status)} />
+                </div>
+              </div>
+
+              {/* Customer */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Customer</p>
+                <p className="font-medium">{viewingOrder.customer.name}</p>
+                <p className="text-sm text-muted-foreground">{viewingOrder.customer.phone}</p>
+              </div>
+
+              {/* Line Items */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Items</p>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="text-left px-2 py-2">Product</th>
+                        <th className="text-center px-2 py-2">Qty</th>
+                        <th className="text-right px-2 py-2">Unit Price</th>
+                        <th className="text-right px-2 py-2">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewingOrder.lines.map((line, idx) => (
+                        <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-2 py-2">
+                            <div className="font-medium">{line.product_name}</div>
+                            <div className="text-muted-foreground">{line.product_code}</div>
+                            {line.vat_percent > 0 && (
+                              <div className="text-muted-foreground">VAT: {line.vat_percent}%</div>
+                            )}
+                          </td>
+                          <td className="text-center px-2 py-2">{line.qty}</td>
+                          <td className="text-right px-2 py-2">{formatCurrency(toPriceNumber(line.unit_price_paisa))}</td>
+                          <td className="text-right px-2 py-2 font-medium">{formatCurrency(toPriceNumber(line.line_total_paisa))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Payment Summary */}
+              <div className="space-y-2 bg-muted/30 p-3 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span className="font-medium">{formatCurrency(toPriceNumber(viewingOrder.subtotal_paisa))}</span>
+                </div>
+                {toPriceNumber(viewingOrder.vat_total_paisa) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">VAT:</span>
+                    <span className="font-medium">{formatCurrency(toPriceNumber(viewingOrder.vat_total_paisa))}</span>
+                  </div>
+                )}
+                <div className="border-t pt-2 mt-2 flex justify-between font-medium">
+                  <span>Total:</span>
+                  <span>{formatCurrency(toPriceNumber(viewingOrder.total_paisa))}</span>
+                </div>
+              </div>
+
+              {/* Payments */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Payments</p>
+                <div className="bg-muted/30 p-3 rounded-lg space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Amount Received:</span>
+                    <span className="font-medium text-success">{formatCurrency(toPriceNumber(viewingOrder.amount_received_paisa))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Amount Due:</span>
+                    <span className="font-medium text-destructive">{formatCurrency(toPriceNumber(viewingOrder.amount_due_paisa))}</span>
+                  </div>
+                </div>
+
+                {viewingOrder.payments && viewingOrder.payments.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <p className="text-xs font-medium text-muted-foreground">Payment History</p>
+                    {viewingOrder.payments.map((payment, idx) => (
+                      <div key={idx} className="flex justify-between text-xs bg-muted/20 p-2 rounded">
+                        <span>{formatDateTime(payment.date)}</span>
+                        <span className="font-medium">{formatCurrency(toPriceNumber(payment.amount_paisa))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {(!viewingOrder.payments || viewingOrder.payments.length === 0) && (
+                  <p className="text-xs text-muted-foreground italic">No payments recorded yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <SheetFooter className="mt-6">
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full"
+              onClick={() => handleOpenDeleteDialog(viewingOrder!)}
+            >
+              Delete Order
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Order AlertDialog */}
+      <AlertDialog open={deletingOrder !== null} onOpenChange={(open) => !open && setDeletingOrder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete order {deletingOrder?.order_number}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogCancel disabled={deleteOrderMutation.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDelete}
+            disabled={deleteOrderMutation.isPending}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleteOrderMutation.isPending ? "Deleting..." : "Delete Order"}
+          </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

@@ -6,6 +6,7 @@ const {
   createOrder,
   addPayment,
   cancelOrder,
+  deleteOrder,
 } = require('../controllers/orderController');
 
 const router = express.Router();
@@ -15,6 +16,7 @@ router.post('/', protect, createOrder);
 router.get('/:id', getOrderById);
 router.post('/:id/pay', protect, addPayment);
 router.post('/:id/cancel', protect, cancelOrder);
+router.delete('/:id', protect, deleteOrder);
 
 module.exports = router;
 

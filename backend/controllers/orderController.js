@@ -293,33 +293,69 @@ exports.createOrder = async (req, res) => {
       status = 'Partially Paid';
     }
 
-    const order_number = await Counter.nextVal('orders', useTransaction ? session : undefined);
+    let order_number = await Counter.nextVal('orders', useTransaction ? session : undefined);
+    let orderDoc;
 
-    const orderDoc = await Order.create(
-      [
-        {
-          order_number,
-          status,
-          customer: customerSnapshot,
-          lines: orderLines,
-          subtotal_paisa,
-          vat_total_paisa,
-          total_paisa,
-          payments:
-            amount_received_paisa > 0
-              ? [
+    // Try to create order, retry once if duplicate key error occurs
+    try {
+      orderDoc = await Order.create(
+        [
+          {
+            order_number,
+            status,
+            customer: customerSnapshot,
+            lines: orderLines,
+            subtotal_paisa,
+            vat_total_paisa,
+            total_paisa,
+            payments:
+              amount_received_paisa > 0
+                ? [
                   {
                     amount_paisa: amount_received_paisa,
                     date: new Date(),
                   },
                 ]
-              : [],
-          amount_received_paisa,
-          amount_due_paisa,
-        },
-      ],
-      useTransaction ? { session: session } : {}
-    );
+                : [],
+            amount_received_paisa,
+            amount_due_paisa,
+          },
+        ],
+        useTransaction ? { session: session } : {}
+      );
+    } catch (createErr) {
+      // Handle duplicate key error on order_number by retrying once
+      if (createErr.code === 11000 && createErr.keyPattern && createErr.keyPattern.order_number) {
+        order_number = await Counter.nextVal('orders', useTransaction ? session : undefined);
+        orderDoc = await Order.create(
+          [
+            {
+              order_number,
+              status,
+              customer: customerSnapshot,
+              lines: orderLines,
+              subtotal_paisa,
+              vat_total_paisa,
+              total_paisa,
+              payments:
+                amount_received_paisa > 0
+                  ? [
+                    {
+                      amount_paisa: amount_received_paisa,
+                      date: new Date(),
+                    },
+                  ]
+                  : [],
+              amount_received_paisa,
+              amount_due_paisa,
+            },
+          ],
+          useTransaction ? { session: session } : {}
+        );
+      } else {
+        throw createErr;
+      }
+    }
 
     const order = orderDoc[0];
 
@@ -530,5 +566,28 @@ exports.cancelOrder = async (req, res) => {
     session.endSession();
     throw err;
   }
+};
+
+exports.deleteOrder = async (req, res) => {
+  const { id } = req.params;
+
+  const order = await Order.findOne({
+    _id: id,
+    is_deleted: false,
+  });
+
+  if (!order) {
+    return res
+      .status(404)
+      .json({ success: false, message: 'Order not found' });
+  }
+
+  order.is_deleted = true;
+  await order.save();
+
+  return res.json({
+    success: true,
+    data: {},
+  });
 };
 
