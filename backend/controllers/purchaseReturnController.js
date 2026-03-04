@@ -3,6 +3,7 @@ const PurchaseReturn = require('../models/PurchaseReturn');
 const Product = require('../models/Product');
 const InventoryTransaction = require('../models/InventoryTransaction');
 const Counter = require('../models/Counter');
+const Purchase = require('../models/Purchase');
 
 const buildPagination = (total, page, limit) => {
   const pages = Math.max(1, Math.ceil(total / limit));
@@ -61,9 +62,17 @@ exports.getPurchaseReturnById = async (req, res) => {
 
 exports.createPurchaseReturn = async (req, res) => {
   const {
+    purchase_number,
     lines,
     date,
   } = req.body;
+
+  if (!purchase_number) {
+    return res.status(400).json({
+      success: false,
+      message: 'Purchase number is required',
+    });
+  }
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return res.status(400).json({
@@ -83,11 +92,41 @@ exports.createPurchaseReturn = async (req, res) => {
   }
 
   try {
-    const returnLines = [];
-    const movementIds = [];
+    // Validation 1: Check if purchase exists and get it
+    const purchaseQuery = Purchase.findOne({
+      purchase_number,
+      is_deleted: false,
+    });
+    if (useTransaction) purchaseQuery.session(session);
+    const originalPurchase = await purchaseQuery;
 
-    const return_number = await Counter.nextVal('purchase_returns', useTransaction ? session : undefined);
+    if (!originalPurchase) {
+      if (useTransaction) {
+        await session.abortTransaction();
+      }
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: `Purchase not found: ${purchase_number}`,
+      });
+    }
 
+    // Pre-fetch all products for the return request
+    const productIds = lines.map(l => l.product_id);
+    const productsMap = {};
+    for (const productId of productIds) {
+      const productQuery = Product.findOne({
+        _id: productId,
+        is_deleted: false,
+      });
+      if (useTransaction) productQuery.session(session);
+      const product = await productQuery;
+      if (product) {
+        productsMap[product._id.toString()] = product;
+      }
+    }
+
+    // Validation 2, 3, 4, 5: For each line, validate against purchase
     for (const line of lines) {
       const { product_id, qty } = line;
       const quantity = Number(qty);
@@ -103,14 +142,8 @@ exports.createPurchaseReturn = async (req, res) => {
         });
       }
 
-      const productQuery = Product.findOne({
-        _id: product_id,
-        is_deleted: false,
-      });
-      if (useTransaction) productQuery.session(session);
-      const product = await productQuery;
-
-      if (!product) {
+      // Product must exist
+      if (!productsMap[product_id.toString()]) {
         if (useTransaction) {
           await session.abortTransaction();
         }
@@ -121,6 +154,74 @@ exports.createPurchaseReturn = async (req, res) => {
         });
       }
 
+      const product = productsMap[product_id.toString()];
+
+      // Validation 3: Product must be in original purchase
+      const purchaseLine = originalPurchase.lines.find(l => l.product_id.toString() === product_id.toString());
+      if (!purchaseLine) {
+        if (useTransaction) {
+          await session.abortTransaction();
+        }
+        session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: `${product.name} was not part of purchase ${purchase_number}`,
+        });
+      }
+
+      // Validation 4: Return quantity cannot exceed purchased quantity
+      if (quantity > purchaseLine.qty) {
+        if (useTransaction) {
+          await session.abortTransaction();
+        }
+        session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: `Cannot return ${quantity} units of ${product.name} — only ${purchaseLine.qty} were purchased`,
+        });
+      }
+
+      // Validation 5: Check total returns (including this one) don't exceed purchased quantity
+      const previousReturnsQuery = PurchaseReturn.find({
+        purchase_number,
+        'lines.product_id': mongoose.Types.ObjectId(product_id),
+      });
+      if (useTransaction) previousReturnsQuery.session(session);
+      const previousReturns = await previousReturnsQuery;
+
+      let totalPreviouslyReturned = 0;
+      for (const prevReturn of previousReturns) {
+        const prevReturnLine = prevReturn.lines.find(l => l.product_id.toString() === product_id.toString());
+        if (prevReturnLine) {
+          totalPreviouslyReturned += prevReturnLine.qty;
+        }
+      }
+
+      const remainingReturnable = purchaseLine.qty - totalPreviouslyReturned;
+      if (quantity > remainingReturnable) {
+        if (useTransaction) {
+          await session.abortTransaction();
+        }
+        session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: `Cannot return ${quantity} units of ${product.name} — only ${remainingReturnable} units remain returnable after previous returns`,
+        });
+      }
+    }
+
+    // All validations passed, now process inventory
+    const returnLines = [];
+    const movementIds = [];
+
+    const return_number = await Counter.nextVal('purchase_returns', useTransaction ? session : undefined);
+
+    for (const line of lines) {
+      const { product_id, qty } = line;
+      const quantity = Number(qty);
+
+      const product = productsMap[product_id.toString()];
+
       product.on_hand = (product.on_hand || 0) - quantity;
       if (product.on_hand < 0) {
         if (useTransaction) {
@@ -129,7 +230,7 @@ exports.createPurchaseReturn = async (req, res) => {
         session.endSession();
         return res.status(409).json({
           success: false,
-          message: `Insufficient stock for return: ${product.name}`,
+          message: `Insufficient stock to process return for ${product.name}`,
         });
       }
 
@@ -137,7 +238,7 @@ exports.createPurchaseReturn = async (req, res) => {
 
       const movement_id = await Counter.nextVal('movements', useTransaction ? session : undefined);
 
-      await InventoryTransaction.create(
+      const [movement] = await InventoryTransaction.create(
         [
           {
             movement_id,
@@ -156,6 +257,8 @@ exports.createPurchaseReturn = async (req, res) => {
         useTransaction ? { session } : {}
       );
 
+      movementIds.push(movement._id);
+
       returnLines.push({
         product_id: product._id,
         product_code: product.product_code,
@@ -164,14 +267,15 @@ exports.createPurchaseReturn = async (req, res) => {
       });
     }
 
-    const purchaseReturnDoc = await PurchaseReturn.create(
+    const [purchaseReturnDoc] = await PurchaseReturn.create(
       [
         {
           return_number,
+          purchase_number,
           date: date ? new Date(date) : new Date(),
           lines: returnLines,
           inventory_movements: movementIds,
-          createdBy: req.user ? req.user.id : undefined,
+          createdBy: req.user ? req.user._id : undefined,
         },
       ],
       useTransaction ? { session } : {}
@@ -180,24 +284,17 @@ exports.createPurchaseReturn = async (req, res) => {
     if (useTransaction) {
       await session.commitTransaction();
     }
-
-    const created = purchaseReturnDoc[0].toObject();
+    session.endSession();
 
     return res.status(201).json({
       success: true,
-      data: { return: created },
+      data: { return: purchaseReturnDoc },
     });
-  } catch (error) {
+  } catch (err) {
     if (useTransaction) {
       await session.abortTransaction();
     }
-    console.error('Error creating purchase return:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to create purchase return',
-      error: error.message,
-    });
-  } finally {
     session.endSession();
+    throw err;
   }
 };

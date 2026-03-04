@@ -122,6 +122,13 @@ exports.createExpense = async (req, res) => {
     parseFloat(paid_amount || '0') * 100
   );
 
+  if (paid_amount_paisa > total_amount_paisa) {
+    return res.status(400).json({
+      success: false,
+      message: 'Paid amount cannot exceed total amount',
+    });
+  }
+
   const expense = await Expense.create({
     date: date ? new Date(date) : undefined,
     party_name,
@@ -187,7 +194,16 @@ exports.updateExpense = async (req, res) => {
     );
   }
 
-  await expense.save();
+  // Validate that paid_amount does not exceed total_amount
+  const total_paisa = expense.total_amount_paisa || 0;
+  const paid_paisa = expense.paid_amount_paisa || 0;
+
+  if (paid_paisa > total_paisa) {
+    return res.status(400).json({
+      success: false,
+      message: 'Paid amount cannot exceed total amount',
+    });
+  }
 
   const transformed = convertExpenseMoney(
     expense.toObject({ virtuals: true })

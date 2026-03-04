@@ -3,6 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
+import { formatDate } from "@/utils/formatDate";
 import { Package, ShoppingCart, ClipboardList, AlertTriangle } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -54,7 +55,7 @@ export default function Dashboard() {
       const curr = current[i];
       const prev = previous[i];
       items.push({
-        label: curr?.label ?? prev?.label ?? `${i + 1}`,
+        label: curr?.label ?? prev?.label ?? `Day ${i + 1}`,
         current: curr ? parseFloat(curr.amount_taka) : 0,
         previous: prev ? parseFloat(prev.amount_taka) : 0,
       });
@@ -268,7 +269,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-semibold text-sm text-secondary">{o.order_number}</p>
                       <p className="text-xs text-muted-foreground">{o.customer_name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{o.date}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{formatDate(o.date)}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">{formatCurrency(parseFloat(o.total_taka))}</p>

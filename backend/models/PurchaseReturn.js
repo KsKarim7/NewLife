@@ -16,6 +16,9 @@ const purchaseReturnSchema = new mongoose.Schema(
       type: String,
       unique: true,
     },
+    purchase_number: {
+      type: String,
+    },
     date: {
       type: Date,
       default: Date.now,

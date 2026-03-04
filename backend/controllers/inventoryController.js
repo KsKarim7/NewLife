@@ -27,7 +27,7 @@ const formatDateTime = (date) => {
 
 const buildPagination = (total, page, limit) => {
   const pages = Math.max(1, Math.ceil(total / limit));
-  return { total, page, limit, pages };
+  return { total, page, limit, pages, totalPages: pages };
 };
 
 exports.getTransactions = async (req, res) => {
@@ -51,7 +51,9 @@ exports.getTransactions = async (req, res) => {
       filter.createdAt.$gte = new Date(from);
     }
     if (to) {
-      filter.createdAt.$lte = new Date(to);
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      filter.createdAt.$lte = toDate;
     }
   }
 
@@ -59,6 +61,7 @@ exports.getTransactions = async (req, res) => {
 
   const transactions = await InventoryTransaction.find(filter)
     .populate('product_id', 'name product_code unit')
+    .populate('createdBy', 'name')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(limit)
@@ -67,23 +70,22 @@ exports.getTransactions = async (req, res) => {
   const transformed = transactions.map((doc) => {
     const productName = doc.product_id?.name ?? doc.product_name;
     const productCode = doc.product_id?.product_code ?? doc.product_code;
-    const unit = doc.product_id?.unit ?? '';
+    const doneBy = doc.createdBy?.name ?? 'System';
     return {
       _id: doc._id,
       movement_id: doc.movement_id,
-      product_id: doc.product_id?._id ?? doc.product_id,
       product_name: productName,
       product_code: productCode,
-      unit,
       qty: doc.qty,
       type: doc.type,
-      unit_cost_paisa: doc.unit_cost_paisa
-        ? paisaToTakaString(doc.unit_cost_paisa)
-        : '0.00',
-      source_doc_number: doc.source?.doc_number,
-      source_doc_type: doc.source?.doc_type,
-      createdAt: formatDateTime(doc.createdAt),
-      createdAtRaw: doc.createdAt,
+      source: {
+        doc_type: doc.source?.doc_type,
+        doc_number: doc.source?.doc_number,
+      },
+      before_qty: undefined,
+      after_qty: undefined,
+      done_by: doneBy,
+      occurred_at: doc.createdAt,
     };
   });
 

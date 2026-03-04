@@ -15,8 +15,8 @@ export interface StockMovement {
   product_code: string;
   qty: number;
   type: StockMovementType;
-  before_qty: number;
-  after_qty: number;
+  before_qty?: number;
+  after_qty?: number;
   done_by: string;
 }
 

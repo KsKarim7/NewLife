@@ -304,7 +304,7 @@ export default function StockMovementLog() {
                     )}
                   >
                     <td className="px-4 py-3 text-table-body text-muted-foreground">
-                      {formatDateTime(movement.occurred_at)}
+                      {movement.occurred_at ? formatDateTime(movement.occurred_at) : "—"}
                     </td>
                     <td className="px-4 py-3 text-table-body font-medium">
                       {movement.product_name}
@@ -324,10 +324,10 @@ export default function StockMovementLog() {
                       {mapTypeToLabel(movement.type)}
                     </td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">
-                      {movement.before_qty}
+                      {movement.before_qty !== undefined ? movement.before_qty : "—"}
                     </td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">
-                      {movement.after_qty}
+                      {movement.after_qty !== undefined ? movement.after_qty : "—"}
                     </td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">
                       {movement.done_by}
@@ -392,7 +392,7 @@ export default function StockMovementLog() {
                   {movement.product_name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatDateTime(movement.occurred_at)}
+                  {movement.occurred_at ? formatDateTime(movement.occurred_at) : "—"}
                 </p>
               </div>
               <div className="flex items-center justify-between">
