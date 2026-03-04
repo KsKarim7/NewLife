@@ -94,9 +94,9 @@ exports.createCustomer = async (req, res) => {
     });
   }
 
-  const { name, phone, address } = req.body;
+  const { name, phone, shop_name, address } = req.body;
 
-  const customer = await Customer.create({ name, phone, address });
+  const customer = await Customer.create({ name, phone, shop_name, address });
 
   return res.status(201).json({
     success: true,
@@ -115,13 +115,16 @@ exports.updateCustomer = async (req, res) => {
       .json({ success: false, message: 'Customer not found' });
   }
 
-  const { name, phone, address } = req.body;
+  const { name, phone, shop_name, address } = req.body;
 
   if (typeof name !== 'undefined') {
     customer.name = name;
   }
   if (typeof phone !== 'undefined') {
     customer.phone = phone;
+  }
+  if (typeof shop_name !== 'undefined') {
+    customer.shop_name = shop_name;
   }
   if (typeof address !== 'undefined') {
     customer.address = address;
@@ -132,6 +135,26 @@ exports.updateCustomer = async (req, res) => {
   return res.json({
     success: true,
     data: { customer },
+  });
+};
+
+exports.deleteCustomer = async (req, res) => {
+  const { id } = req.params;
+
+  const customer = await Customer.findOne({ _id: id, is_deleted: false });
+
+  if (!customer) {
+    return res
+      .status(404)
+      .json({ success: false, message: 'Customer not found' });
+  }
+
+  customer.is_deleted = true;
+  await customer.save();
+
+  return res.json({
+    success: true,
+    message: 'Customer deleted successfully',
   });
 };
 

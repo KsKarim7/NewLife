@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/utils/formatDate";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -13,7 +13,16 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Customer,
@@ -21,6 +30,7 @@ import {
   createCustomer,
   getCustomers,
   updateCustomer,
+  deleteCustomer,
 } from "@/api/customersApi";
 
 export default function CustomersList() {
@@ -31,7 +41,10 @@ export default function CustomersList() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [shopName, setShopName] = useState("");
   const [address, setAddress] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -56,7 +69,7 @@ export default function CustomersList() {
         page,
         limit: 10,
       }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const customers = data?.customers ?? [];
@@ -77,6 +90,7 @@ export default function CustomersList() {
   const resetForm = () => {
     setName("");
     setPhone("");
+    setShopName("");
     setAddress("");
   };
 
@@ -90,6 +104,7 @@ export default function CustomersList() {
     setEditingCustomer(customer);
     setName(customer.name);
     setPhone(customer.phone);
+    setShopName(customer.shop_name ?? "");
     setAddress(customer.address ?? "");
     setIsSheetOpen(true);
   };
@@ -107,7 +122,7 @@ export default function CustomersList() {
       toast({ title: "Customer added" });
       closeSheet();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Failed to add customer",
         description: error?.message ?? "Something went wrong",
@@ -117,16 +132,33 @@ export default function CustomersList() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { name: string; phone: string; address?: string } }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: { name: string; phone: string; shop_name?: string; address?: string } }) =>
       updateCustomer(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast({ title: "Customer updated" });
       closeSheet();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Failed to update customer",
+        description: error?.message ?? "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCustomerMutation = useMutation({
+    mutationFn: (id: string) => deleteCustomer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      toast({ title: "Customer deleted" });
+      setIsDeleteDialogOpen(false);
+      setCustomerToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete customer",
         description: error?.message ?? "Something went wrong",
         variant: "destructive",
       });
@@ -139,6 +171,7 @@ export default function CustomersList() {
     const payload = {
       name: name.trim(),
       phone: phone.trim(),
+      shop_name: shopName.trim() || undefined,
       address: address.trim() || undefined,
     };
 
@@ -149,7 +182,18 @@ export default function CustomersList() {
     }
   };
 
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const handleDeleteCustomer = (customer: Customer) => {
+    setCustomerToDelete(customer);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (customerToDelete) {
+      deleteCustomerMutation.mutate(customerToDelete._id);
+    }
+  };
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending || deleteCustomerMutation.isPending;
 
   return (
     <PageLayout title="Customers" searchPlaceholder="Search customers by name or phone...">
@@ -174,7 +218,7 @@ export default function CustomersList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                {["Name", "Phone", "Address", "Created", "Actions"].map((h) => (
+                {["Name", "Phone", "Shop Name", "Address", "Created", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="text-left text-table-header uppercase text-muted-foreground px-4 py-3"
@@ -187,14 +231,14 @@ export default function CustomersList() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground">
                     Loading customers...
                   </td>
                 </tr>
               )}
               {!isLoading && customers.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground">
                     No customers found.
                   </td>
                 </tr>
@@ -217,19 +261,31 @@ export default function CustomersList() {
                         {customer.phone}
                       </td>
                       <td className="px-4 py-3 text-table-body text-muted-foreground">
+                        {customer.shop_name || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-table-body text-muted-foreground">
                         {customer.address || "—"}
                       </td>
                       <td className="px-4 py-3 text-table-body text-muted-foreground">
                         {created ? formatDateTime(created) : "—"}
                       </td>
                       <td className="px-4 py-3 text-table-body text-secondary">
-                        <button
-                          type="button"
-                          className="text-sm hover:underline"
-                          onClick={() => openEditSheet(customer)}
-                        >
-                          Edit
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-colors"
+                            onClick={() => openEditSheet(customer)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            onClick={() => handleDeleteCustomer(customer)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -296,6 +352,11 @@ export default function CustomersList() {
                     <p className="text-xs text-muted-foreground">
                       {customer.phone}
                     </p>
+                    {customer.shop_name && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {customer.shop_name}
+                      </p>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {created ? formatDateTime(created) : "—"}
@@ -304,13 +365,20 @@ export default function CustomersList() {
                 <p className="text-xs text-muted-foreground">
                   {customer.address || "No address"}
                 </p>
-                <div className="mt-2 flex justify-end">
+                <div className="mt-2 flex justify-end gap-2">
                   <button
                     type="button"
-                    className="text-xs text-secondary hover:underline"
+                    className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-colors"
                     onClick={() => openEditSheet(customer)}
                   >
-                    Edit
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    onClick={() => handleDeleteCustomer(customer)}
+                  >
+                    <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
               </div>
@@ -352,6 +420,17 @@ export default function CustomersList() {
               />
             </div>
             <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground" htmlFor="customer-shop-name">
+                Shop Name
+              </label>
+              <Input
+                id="customer-shop-name"
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                placeholder="Optional shop name"
+              />
+            </div>
+            <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground" htmlFor="customer-address">
                 Address
               </label>
@@ -379,6 +458,32 @@ export default function CustomersList() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this customer? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <p className="font-semibold">{customerToDelete?.name}</p>
+            <p className="text-sm text-muted-foreground">{customerToDelete?.phone}</p>
+          </div>
+          <div className="flex gap-4">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleteCustomerMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCustomerMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

@@ -13,6 +13,23 @@ import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDashboardStats, type DashboardStats } from "@/api/dashboardApi";
 
+function orderStatusToStatusType(status: string): import("@/components/shared/StatusBadge").StatusType {
+  switch (status) {
+    case "Confirmed":
+      return "confirmed";
+    case "Partially Paid":
+      return "partial";
+    case "Paid":
+      return "paid";
+    case "Cancelled":
+      return "cancelled";
+    case "Returned":
+      return "returned";
+    default:
+      return "confirmed";
+  }
+}
+
 export default function Dashboard() {
   const [period, setPeriod] = useState("7d");
   const navigate = useNavigate();
@@ -238,7 +255,7 @@ export default function Dashboard() {
                         <td className="py-2.5 text-table-body font-medium text-secondary">{o.order_number}</td>
                         <td className="py-2.5 text-table-body text-card-foreground">{o.customer_name}</td>
                         <td className="py-2.5 text-table-body text-right text-card-foreground">{formatCurrency(parseFloat(o.total_taka))}</td>
-                        <td className="py-2.5 text-center"><StatusBadge status={o.status as any} /></td>
+                        <td className="py-2.5 text-center"><StatusBadge status={orderStatusToStatusType(o.status)} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -255,7 +272,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">{formatCurrency(parseFloat(o.total_taka))}</p>
-                      <StatusBadge status={o.status as any} />
+                      <StatusBadge status={orderStatusToStatusType(o.status)} />
                     </div>
                   </div>
                 ))}

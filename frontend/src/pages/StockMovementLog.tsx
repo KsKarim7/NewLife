@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import axiosClient from "@/api/axiosClient";
-import { getStockMovements, type StockMovement, type StockMovementType } from "@/api/stockLogApi";
+import { getStockMovements, type StockMovement, type StockMovementType, type StockMovementsResponse } from "@/api/stockLogApi";
 import { formatDateTime } from "@/utils/formatDate";
 
 interface StockLogProduct {
@@ -73,7 +73,7 @@ export default function StockMovementLog() {
   const {
     data: productResults,
     isLoading: isProductLoading,
-  } = useQuery<any>({
+  } = useQuery<StockLogProduct[]>({
     queryKey: ["stockLogProducts", debouncedProductSearch],
     enabled: debouncedProductSearch.trim().length > 1,
     queryFn: async () => {
@@ -95,7 +95,7 @@ export default function StockMovementLog() {
     data: stockData,
     isLoading,
     isFetching,
-  } = useQuery<any>({
+  } = useQuery<StockMovementsResponse>({
     queryKey: [
       "stockLog",
       page,

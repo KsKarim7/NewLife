@@ -4,6 +4,7 @@ export interface Customer {
   _id: string;
   name: string;
   phone: string;
+  shop_name?: string;
   address?: string;
   createdAt?: string;
   created_at?: string;
@@ -77,6 +78,7 @@ export const getCustomerOrders = async (id: string): Promise<CustomerOrderSummar
 export interface CustomerPayload {
   name: string;
   phone: string;
+  shop_name?: string;
   address?: string;
 }
 
@@ -98,5 +100,13 @@ export const updateCustomer = async (id: string, data: CustomerPayload): Promise
   }
 
   return response.data.data?.customer ?? response.data.data;
+};
+
+export const deleteCustomer = async (id: string): Promise<void> => {
+  const response = await axiosClient.delete(`/customers/${id}`);
+
+  if (!response.data?.success) {
+    throw new Error(response.data?.message || "Failed to delete customer");
+  }
 };
 

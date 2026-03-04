@@ -10,6 +10,9 @@ const customerSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Phone is required'],
     },
+    shop_name: {
+      type: String,
+    },
     address: {
       type: String,
     },
