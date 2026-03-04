@@ -5,9 +5,28 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { getOrders, type Order } from "@/api/ordersApi";
+import { Input } from "@/components/ui/input";
+import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { getOrders, type Order, createOrder, type CreateOrderPayload } from "@/api/ordersApi";
+import { getCustomers, type Customer } from "@/api/customersApi";
+import { getProducts, type Product } from "@/api/productsApi";
 
 const paisaToTaka = (paisa: number) => {
   return paisa / 100;
@@ -17,6 +36,23 @@ export default function OrdersList() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  // Create order sheet state
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [orderLines, setOrderLines] = useState<Array<{
+    product_id: string;
+    qty: number;
+    unit_price: string;
+    vat_percent: number;
+  }>>([
+    { product_id: "", qty: 1, unit_price: "", vat_percent: 0 }
+  ]);
+  const [amountReceived, setAmountReceived] = useState("");
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const debouncedSearch = useMemo(() => {
     const timer = setTimeout(() => {
@@ -35,6 +71,32 @@ export default function OrdersList() {
       }),
   });
 
+  const { data: customersData } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => getCustomers({ limit: 100 }),
+  });
+
+  const { data: productsData } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => getProducts({ limit: 100 }),
+  });
+
+  const createOrderMutation = useMutation({
+    mutationFn: createOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast({ title: "Order created successfully" });
+      closeSheet();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create order",
+        description: error?.message ?? "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
   const orders = ordersData?.orders ?? [];
   const pagination = ordersData?.pagination;
   const totalOrders = pagination?.total ?? 0;
@@ -44,6 +106,74 @@ export default function OrdersList() {
   const totalReceived = orders.reduce((sum, o) => sum + paisaToTaka(o.amount_received_paisa), 0);
   const totalDue = orders.reduce((sum, o) => sum + paisaToTaka(o.amount_due_paisa), 0);
   const totalRevenue = orders.reduce((sum, o) => sum + paisaToTaka(o.total_paisa), 0);
+
+  // Helper functions for create order
+  const openAddSheet = () => {
+    setCustomerName("");
+    setCustomerPhone("");
+    setOrderLines([{ product_id: "", qty: 1, unit_price: "", vat_percent: 0 }]);
+    setAmountReceived("");
+    setIsSheetOpen(true);
+  };
+
+  const closeSheet = () => {
+    setIsSheetOpen(false);
+  };
+
+  const resetFormFields = () => {
+    setCustomerName("");
+    setCustomerPhone("");
+    setOrderLines([{ product_id: "", qty: 1, unit_price: "", vat_percent: 0 }]);
+    setAmountReceived("");
+  };
+
+  const handleAddOrderLine = () => {
+    setOrderLines([...orderLines, { product_id: "", qty: 1, unit_price: "", vat_percent: 0 }]);
+  };
+
+  const handleRemoveOrderLine = (index: number) => {
+    setOrderLines(orderLines.filter((_, i) => i !== index));
+  };
+
+  const handleOrderLineChange = (index: number, field: string, value: string | number) => {
+    const newLines = [...orderLines];
+    newLines[index] = { ...newLines[index], [field]: value };
+    setOrderLines(newLines);
+  };
+
+  const handleSubmitOrder = () => {
+    if (!customerName.trim() || !customerPhone.trim()) {
+      toast({
+        title: "Validation error",
+        description: "Customer name and phone are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (orderLines.length === 0 || orderLines.some(l => !l.product_id || !l.unit_price)) {
+      toast({
+        title: "Validation error",
+        description: "Please add at least one product line with valid product and price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload: CreateOrderPayload = {
+      customer_name: customerName.trim(),
+      customer_phone: customerPhone.trim(),
+      lines: orderLines.map(line => ({
+        product_id: line.product_id,
+        qty: line.qty,
+        unit_price: line.unit_price,
+        vat_percent: line.vat_percent,
+      })),
+      amount_received: amountReceived ? parseInt(amountReceived) * 100 : undefined,
+    };
+
+    createOrderMutation.mutate(payload);
+  };
 
   // Filter by search term locally
   const filteredOrders = orders.filter(o =>
@@ -62,7 +192,20 @@ export default function OrdersList() {
   }
 
   function orderStatusToStatusType(status: string): import("@/components/shared/StatusBadge").StatusType {
-    throw new Error("Function not implemented.");
+    switch (status) {
+      case "Confirmed":
+        return "confirmed";
+      case "Partially Paid":
+        return "partial";
+      case "Paid":
+        return "paid";
+      case "Cancelled":
+        return "cancelled";
+      case "Returned":
+        return "returned";
+      default:
+        return "confirmed";
+    }
   }
 
   return (
@@ -104,7 +247,10 @@ export default function OrdersList() {
           <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" /> Export PDF</Button>
           <Button variant="outline" size="sm"><FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel</Button>
         </div>
-        <Button className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button 
+          className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={openAddSheet}
+        >
           <Plus className="h-4 w-4 mr-1" /> Create Order
         </Button>
       </div>
@@ -235,6 +381,146 @@ export default function OrdersList() {
           </Button>
         </div>
       )}
+
+      {/* Create Order Sheet */}
+      <Sheet open={isSheetOpen} onOpenChange={(open) => !open && closeSheet()}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Create New Order</SheetTitle>
+            <SheetDescription>
+              Create a new order by adding customer details and products.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            {/* Customer Information */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Customer Name *</label>
+              <Input
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Enter customer name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Customer Phone *</label>
+              <Input
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+
+            {/* Order Lines */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-foreground">Order Items *</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddOrderLine}
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Add Item
+                </Button>
+              </div>
+
+              {orderLines.map((line, index) => (
+                <div key={index} className="bg-muted/30 p-3 rounded-lg mb-3 space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-muted-foreground">Item {index + 1}</span>
+                    {orderLines.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOrderLine(index)}
+                        className="p-1 hover:bg-destructive/10 rounded"
+                      >
+                        <X className="h-4 w-4 text-destructive" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium">Product *</label>
+                    <Select value={line.product_id} onValueChange={(value) => handleOrderLineChange(index, "product_id", value)}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(productsData?.products ?? []).map((product: Product) => (
+                          <SelectItem key={product._id} value={product._id}>
+                            {product.name} ({product.product_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium">Qty *</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={line.qty}
+                        onChange={(e) => handleOrderLineChange(index, "qty", parseInt(e.target.value) || 1)}
+                        className="h-8 text-sm"
+                        placeholder="Qty"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium">Unit Price (Tk) *</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={line.unit_price}
+                        onChange={(e) => handleOrderLineChange(index, "unit_price", e.target.value)}
+                        className="h-8 text-sm"
+                        placeholder="Price"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium">VAT %</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={line.vat_percent}
+                      onChange={(e) => handleOrderLineChange(index, "vat_percent", parseInt(e.target.value) || 0)}
+                      className="h-8 text-sm"
+                      placeholder="VAT %"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Amount Received */}
+            <div className="space-y-1.5 border-t pt-4">
+              <label className="text-sm font-medium text-foreground">Amount Received (Tk)</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={amountReceived}
+                onChange={(e) => setAmountReceived(e.target.value)}
+                placeholder="Enter amount received (optional)"
+              />
+            </div>
+          </div>
+
+          <SheetFooter className="mt-6">
+            <Button
+              type="button"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleSubmitOrder}
+              disabled={createOrderMutation.isPending || !customerName.trim() || !customerPhone.trim()}
+            >
+              {createOrderMutation.isPending ? "Creating..." : "Create Order"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </PageLayout>
   );
 }

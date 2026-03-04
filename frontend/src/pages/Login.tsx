@@ -33,10 +33,11 @@ export default function Login() {
     try {
       await login(email, password);
       navigate("/", { replace: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
       const message =
-        err?.response?.data?.message ||
-        err?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
         "Login failed";
       setError(message);
     } finally {
@@ -110,3 +111,4 @@ export default function Login() {
     </div>
   );
 }
+

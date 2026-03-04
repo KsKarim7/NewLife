@@ -73,7 +73,7 @@ export default function StockMovementLog() {
   const {
     data: productResults,
     isLoading: isProductLoading,
-  } = useQuery({
+  } = useQuery<any>({
     queryKey: ["stockLogProducts", debouncedProductSearch],
     enabled: debouncedProductSearch.trim().length > 1,
     queryFn: async () => {
@@ -95,7 +95,7 @@ export default function StockMovementLog() {
     data: stockData,
     isLoading,
     isFetching,
-  } = useQuery({
+  } = useQuery<any>({
     queryKey: [
       "stockLog",
       page,
@@ -113,7 +113,7 @@ export default function StockMovementLog() {
         from: fromDate || undefined,
         to: toDate || undefined,
       }),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
   });
 
   const movements: StockMovement[] = stockData?.transactions ?? [];
@@ -417,3 +417,4 @@ export default function StockMovementLog() {
     </PageLayout>
   );
 }
+

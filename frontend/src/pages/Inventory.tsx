@@ -73,7 +73,7 @@ type ProductFormValues = {
   name: string;
   product_code: string;
   category_id: string;
-  unit: string;
+  stock_qty?: number;
   selling_price: string;
   buying_price: string;
   vat_enabled: boolean;
@@ -177,7 +177,7 @@ export default function Inventory() {
       name: "",
       product_code: "",
       category_id: "",
-      unit: "",
+      stock_qty: 0,
       selling_price: "",
       buying_price: "",
       vat_enabled: false,
@@ -199,7 +199,7 @@ export default function Inventory() {
       name: "",
       product_code: "",
       category_id: activeCategory ?? "",
-      unit: "",
+      stock_qty: 0,
       selling_price: "",
       buying_price: "",
       vat_enabled: false,
@@ -216,7 +216,7 @@ export default function Inventory() {
       name: product.name,
       product_code: product.product_code,
       category_id: product.category?._id ?? "",
-      unit: product.unit,
+      stock_qty: product.stock_qty,
       selling_price: product.selling_price_taka,
       buying_price: product.buying_price_taka,
       vat_enabled: product.vat_enabled ?? false,
@@ -432,7 +432,7 @@ export default function Inventory() {
       name: values.name,
       product_code: values.product_code,
       category_id: values.category_id,
-      unit: values.unit,
+      unit: "pcs",
       selling_price: values.selling_price,
       buying_price: values.buying_price,
       vat_enabled: values.vat_enabled,
@@ -550,9 +550,6 @@ export default function Inventory() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="text-left text-table-header uppercase text-muted-foreground px-4 py-3 w-10">
-                  <input type="checkbox" className="rounded border-input" />
-                </th>
                 <th className="text-left text-table-header uppercase text-muted-foreground px-4 py-3 w-12"></th>
                 <th className="text-left text-table-header uppercase text-muted-foreground px-4 py-3">Product Name</th>
                 <th className="text-left text-table-header uppercase text-muted-foreground px-4 py-3">Category</th>
@@ -565,7 +562,7 @@ export default function Inventory() {
               {isProductsLoading && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     className="px-4 py-6 text-center text-sm text-muted-foreground"
                   >
                     Loading products...
@@ -575,7 +572,7 @@ export default function Inventory() {
               {!isProductsLoading && products.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     className="px-4 py-6 text-center text-sm text-muted-foreground"
                   >
                     No products found.
@@ -593,7 +590,6 @@ export default function Inventory() {
                   onMouseEnter={() => setHoveredRow(i)}
                   onMouseLeave={() => setHoveredRow(null)}
                 >
-                  <td className="px-4 py-3"><input type="checkbox" className="rounded border-input" /></td>
                   <td className="px-4 py-3">
                     <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-lg">
                       {product.image_url ? (
@@ -618,7 +614,7 @@ export default function Inventory() {
                   <td className="px-4 py-3 text-center">
                     <StatusBadge
                       status={getStockStatus(product.stock_qty)}
-                      label={`${product.stock_qty} ${product.unit}`}
+                      label={`${product.stock_qty} pcs`}
                     />
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -713,7 +709,7 @@ export default function Inventory() {
               <p className="text-xs text-muted-foreground">{product.product_code}</p>
               <p className="text-xs text-muted-foreground">{product.category_name}</p>
               <div className="flex items-center justify-between mt-1">
-                <StatusBadge status={getStockStatus(product.stock_qty)} label={`${product.stock_qty} ${product.unit}`} />
+                <StatusBadge status={getStockStatus(product.stock_qty)} label={`${product.stock_qty} pcs`} />
                 <span className="font-bold text-sm">
                   {formatCurrency(parseFloat(product.selling_price_taka))}
                 </span>
@@ -810,21 +806,25 @@ export default function Inventory() {
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={productForm.control}
-                    name="unit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unit</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. pcs, kg" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={productForm.control}
+                  name="stock_qty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Initial Quantity (pcs)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={field.value ?? 0}
+                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={productForm.control}
@@ -1131,3 +1131,8 @@ export default function Inventory() {
     </PageLayout>
   );
 }
+
+
+
+
+

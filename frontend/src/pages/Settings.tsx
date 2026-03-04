@@ -20,6 +20,29 @@ import { Loader2, Upload, Edit2, Trash2, Plus, RotateCcw } from "lucide-react";
 const CLOUDINARY_CLOUD_NAME = "dbnhzz2sj";
 const CLOUDINARY_UPLOAD_PRESET = "stock_core_public";
 
+// Helper function to extract error message
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "object" && error !== null) {
+    const err = error as Record<string, unknown>;
+    if (err.response && typeof err.response === "object") {
+      const response = err.response as Record<string, unknown>;
+      if (response.data && typeof response.data === "object") {
+        const data = response.data as Record<string, unknown>;
+        if (typeof data.message === "string") {
+          return data.message;
+        }
+      }
+    }
+    if (typeof err.message === "string") {
+      return err.message;
+    }
+  }
+  return "An unknown error occurred";
+};
+
 export default function Settings() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -66,24 +89,28 @@ export default function Settings() {
   const [changePasswordForm, setChangePasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
   // Fetch Settings
+  // Fetch Settings
   const { data: settingsData, isLoading: isLoadingSettings } = useQuery({
     queryKey: ["settings"],
     queryFn: getSettings,
-    onSuccess: (data) => {
-      setStoreFormData({
-        store_name: data.store_info.store_name || "",
-        owner_name: data.store_info.owner_name || "",
-        phone_number: data.store_info.phone_number || "",
-        email_address: data.store_info.email_address || "",
-        physical_address: data.store_info.physical_address || "",
-        city: data.store_info.city || "",
-      });
-      setLogoUrl(data.store_info.logo_url || "");
-      setRetentionDays(data.purge_after_days);
-      if (user) setChangeEmailEmail(user.email);
-    },
   });
 
+  // Handle settings data changes
+  useEffect(() => {
+    if (settingsData) {
+      setStoreFormData({
+        store_name: settingsData.store_info.store_name || "",
+        owner_name: settingsData.store_info.owner_name || "",
+        phone_number: settingsData.store_info.phone_number || "",
+        email_address: settingsData.store_info.email_address || "",
+        physical_address: settingsData.store_info.physical_address || "",
+        city: settingsData.store_info.city || "",
+      });
+      setLogoUrl(settingsData.store_info.logo_url || "");
+      setRetentionDays(settingsData.purge_after_days);
+      if (user) setChangeEmailEmail(user.email);
+    }
+  }, [settingsData, user]);
   // Fetch Users
   const { data: usersData, isLoading: isLoadingUsers } = useQuery({
     queryKey: ["settings-users", usersPage],
@@ -98,8 +125,8 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       toast({ title: "Store information updated" });
     },
-    onError: (error: any) => {
-      const errorMsg = error?.response?.data?.message || error?.message || "Failed to update store information";
+    onError: (error: unknown) => {
+      const errorMsg = getErrorMessage(error) || "Failed to update store information";
       console.error("Store update error:", error);
       toast({ title: errorMsg, variant: "destructive" });
     },
@@ -112,8 +139,8 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       toast({ title: "Retention settings updated" });
     },
-    onError: (error: any) => {
-      const errorMsg = error?.response?.data?.message || error?.message || "Failed to update retention settings";
+    onError: (error: unknown) => {
+      const errorMsg = getErrorMessage(error) || "Failed to update retention settings";
       console.error("Retention update error:", error);
       toast({ title: errorMsg, variant: "destructive" });
     },
@@ -128,8 +155,8 @@ export default function Settings() {
       setNewUserForm({ name: "", email: "", role: "staff", password: "", phone: "" });
       toast({ title: "User created successfully" });
     },
-    onError: (error: any) => {
-      const errorMsg = error?.response?.data?.message || error?.message || "Failed to create user";
+    onError: (error: unknown) => {
+      const errorMsg = getErrorMessage(error) || "Failed to create user";
       console.error("Create user error:", error);
       toast({ title: errorMsg, variant: "destructive" });
     },
@@ -145,8 +172,8 @@ export default function Settings() {
       setEditUserForm({ name: "", phone: "" });
       toast({ title: "User updated successfully" });
     },
-    onError: (error: any) => {
-      const errorMsg = error?.response?.data?.message || error?.message || "Failed to update user";
+    onError: (error: unknown) => {
+      const errorMsg = getErrorMessage(error) || "Failed to update user";
       console.error("Update user error:", error);
       toast({ title: errorMsg, variant: "destructive" });
     },
@@ -161,8 +188,8 @@ export default function Settings() {
       setUserToDeactivate(null);
       toast({ title: "User status updated" });
     },
-    onError: (error: any) => {
-      const errorMsg = error?.response?.data?.message || error?.message || "Failed to update user status";
+    onError: (error: unknown) => {
+      const errorMsg = getErrorMessage(error) || "Failed to update user status";
       console.error("Deactivate user error:", error);
       toast({ title: errorMsg, variant: "destructive" });
     },
@@ -226,14 +253,15 @@ export default function Settings() {
         setLogoUrl(logoUrlFromCloudinary);
         queryClient.invalidateQueries({ queryKey: ["settings"] });
         toast({ title: "Logo uploaded successfully" });
-      } catch (apiErr: any) {
+      } catch (apiErr: unknown) {
         console.error("Failed to save logo to backend:", apiErr);
-        const errorMsg = apiErr?.response?.data?.message || apiErr?.message || "Failed to save logo to server";
+        const errorMsg = getErrorMessage(apiErr) || "Failed to save logo to server";
         toast({ title: errorMsg, variant: "destructive" });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Logo upload error:", err);
-      toast({ title: err.message || "Failed to upload logo", variant: "destructive" });
+      const errorMsg = getErrorMessage(err) || "Failed to upload logo";
+      toast({ title: errorMsg, variant: "destructive" });
     } finally {
       setIsUploadingLogo(false);
     }
@@ -659,3 +687,4 @@ export default function Settings() {
     </PageLayout>
   );
 }
+

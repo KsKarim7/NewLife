@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 const axiosClient = axios.create({
   baseURL: "http://localhost:5000/api/v1",
@@ -9,7 +9,6 @@ axiosClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("ims_token");
     if (token) {
-      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
@@ -32,4 +31,3 @@ axiosClient.interceptors.response.use(
 );
 
 export default axiosClient;
-
