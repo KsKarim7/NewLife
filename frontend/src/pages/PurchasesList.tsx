@@ -43,9 +43,15 @@ interface PurchaseLineItem {
 
 export default function PurchasesList() {
   const [page, setPage] = useState(1);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [period, setPeriod] = useState("7d");
+  const [dateFrom, setDateFrom] = useState(() => {
+    const initialRange = getPeriodDateRange("7d");
+    return initialRange?.from ?? "";
+  });
+  const [dateTo, setDateTo] = useState(() => {
+    const initialRange = getPeriodDateRange("7d");
+    return initialRange?.to ?? "";
+  });
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
@@ -69,9 +75,11 @@ export default function PurchasesList() {
 
   const { from: queryFrom, to: queryTo } = getQueryDateRange();
 
+  const shouldFetch = period !== "custom" || !!(customFrom && customTo);
+
   // Fetch purchases
   const { data: purchasesData, isLoading, isError, error } = useQuery<PurchasesResponse>({
-    queryKey: ["purchases", page, dateFrom, dateTo, period, customFrom, customTo],
+    queryKey: ["purchases", page, queryFrom, queryTo],
     queryFn: () =>
       getPurchases({
         page,
@@ -79,6 +87,7 @@ export default function PurchasesList() {
         from: queryFrom || undefined,
         to: queryTo || undefined,
       }),
+    enabled: shouldFetch,
   });
 
   // Fetch products for dropdown
@@ -189,7 +198,8 @@ export default function PurchasesList() {
     else if (value === "month") next = "month";
     else if (value === "custom") next = "custom";
     setPeriod(next);
-    
+    setPage(1);
+ 
     // Update date inputs based on period
     if (next === "custom") {
       // For custom, dates come from Header (customFrom/customTo)

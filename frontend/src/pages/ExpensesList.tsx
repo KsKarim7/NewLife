@@ -43,9 +43,15 @@ export default function ExpensesList() {
   const { toast } = useToast();
 
   const [page, setPage] = useState(1);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
   const [period, setPeriod] = useState("7d");
+  const [fromDate, setFromDate] = useState(() => {
+    const initialRange = getPeriodDateRange("7d");
+    return initialRange?.from ?? "";
+  });
+  const [toDate, setToDate] = useState(() => {
+    const initialRange = getPeriodDateRange("7d");
+    return initialRange?.to ?? "";
+  });
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
@@ -70,9 +76,11 @@ export default function ExpensesList() {
 
   const { from: queryFrom, to: queryTo } = getQueryDateRange();
 
+  const shouldFetch = period !== "custom" || !!(customFrom && customTo);
+
   // Fetch expenses
   const { data, isLoading, error } = useQuery<ExpensesResponse>({
-    queryKey: ["expenses", page, fromDate, toDate, period, customFrom, customTo],
+    queryKey: ["expenses", page, queryFrom, queryTo],
     queryFn: () =>
       getExpenses({
         page,
@@ -80,6 +88,7 @@ export default function ExpensesList() {
         from: queryFrom || undefined,
         to: queryTo || undefined,
       }),
+    enabled: shouldFetch,
   });
 
   const expenses = data?.data?.expenses || [];

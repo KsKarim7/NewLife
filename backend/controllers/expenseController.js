@@ -45,10 +45,14 @@ exports.getAllExpenses = async (req, res) => {
   if (from || to) {
     filter.date = {};
     if (from) {
-      filter.date.$gte = new Date(from);
+      const fromDate = new Date(from);
+      fromDate.setHours(0, 0, 0, 0);
+      filter.date.$gte = fromDate;
     }
     if (to) {
-      filter.date.$lte = new Date(to);
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      filter.date.$lte = toDate;
     }
   }
 

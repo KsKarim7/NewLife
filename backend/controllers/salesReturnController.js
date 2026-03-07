@@ -21,10 +21,14 @@ exports.getAllSalesReturns = async (req, res) => {
   if (from || to) {
     filter.return_date = {};
     if (from) {
-      filter.return_date.$gte = new Date(from);
+      const fromDate = new Date(from);
+      fromDate.setHours(0, 0, 0, 0);
+      filter.return_date.$gte = fromDate;
     }
     if (to) {
-      filter.return_date.$lte = new Date(to);
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      filter.return_date.$lte = toDate;
     }
   }
 

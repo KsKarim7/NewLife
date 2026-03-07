@@ -125,7 +125,7 @@ export default function OrdersList() {
   }, []);
 
   const { data: ordersData, isLoading, isError, error } = useQuery<OrdersResponse>({
-    queryKey: ["orders", page, statusFilter, period, customFrom, customTo],
+    queryKey: ["orders", page, statusFilter, fromDate, toDate],
     queryFn: () =>
       getOrders({
         page,
@@ -259,6 +259,7 @@ export default function OrdersList() {
     else if (value === "month") next = "month";
     else if (value === "custom") next = "custom";
     setPeriod(next);
+    setPage(1);
   };
 
   const resetFormFields = () => {

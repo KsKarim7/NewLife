@@ -82,7 +82,7 @@ export default function SalesReturnsList() {
 
   // Fetch sales returns
   const { data: returnsData, isLoading, isError, error } = useQuery<SalesReturnsResponse>({
-    queryKey: ["sales-returns", page, period, customFrom, customTo],
+    queryKey: ["sales-returns", page, fromDate, toDate],
     queryFn: () =>
       getSalesReturns({
         page,
@@ -202,6 +202,7 @@ export default function SalesReturnsList() {
     else if (value === "month") next = "month";
     else if (value === "custom") next = "custom";
     setPeriod(next);
+    setPage(1);
   };
 
   // Export returns as CSV

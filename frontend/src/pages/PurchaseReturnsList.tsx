@@ -67,7 +67,7 @@ export default function PurchaseReturnsList() {
 
   // Fetch purchase returns
   const { data: returnsData, isLoading } = useQuery<PurchaseReturnsResponse>({
-    queryKey: ["purchaseReturns", page, period, customFrom, customTo],
+    queryKey: ["purchaseReturns", page, fromDate, toDate],
     queryFn: () =>
       getPurchaseReturns({
         page,
@@ -198,6 +198,7 @@ export default function PurchaseReturnsList() {
     else if (value === "month") next = "month";
     else if (value === "custom") next = "custom";
     setPeriod(next);
+    setPage(1);
   };
 
   // Export returns as CSV
