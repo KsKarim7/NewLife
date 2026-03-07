@@ -182,9 +182,11 @@ export default function StockMovementLog() {
   };
 
   return (
-    <PageLayout 
-      title="Stock Movement Log" 
-      searchPlaceholder="Search by product name or code..."
+    <PageLayout
+      title="Stock Movement Log"
+      searchPlaceholder="Search products to filter..."
+      searchValue={productSearch}
+      onSearchChange={(val) => { setProductSearch(val); setShowProductResults(true); }}
       periodValue={period === "today" ? "today" : period === "7d" ? "7" : period === "30d" ? "30" : period === "month" ? "month" : "custom"}
       onPeriodChange={handlePeriodChange}
       customFrom={customFrom}
@@ -213,6 +215,16 @@ export default function StockMovementLog() {
               <SelectItem value="manual">Manual Adjustment</SelectItem>
             </SelectContent>
           </Select>
+          {selectedProduct && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearProduct}
+              className="text-xs"
+            >
+              Clear Product
+            </Button>
+          )}
         </div>
         <div className="hidden md:flex items-center gap-2">
           <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" /> Export PDF</Button>
@@ -236,53 +248,35 @@ export default function StockMovementLog() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-        <div className="w-full md:max-w-xs">
-          <div className="relative">
-            <Input
-              placeholder={selectedProduct ? "Filter by product" : "Search products for filter..."}
-              value={productSearch}
-              onChange={(e) => {
-                setProductSearch(e.target.value);
-                setShowProductResults(true);
-              }}
-              className="h-9 pr-8"
-            />
-            {selectedProduct && (
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
-                onClick={handleClearProduct}
-              >
-                Clear
-              </button>
+      {/* Product search autocomplete dropdown */}
+      {showProductResults && productSearch.trim().length > 1 && (
+        <div className="mb-4 w-full md:max-w-xs">
+          <div className="max-h-56 overflow-y-auto rounded-md border border-border bg-card shadow-sm text-sm">
+            {isProductLoading && (
+              <div className="px-3 py-2 text-muted-foreground">Searching...</div>
+            )}
+            {!isProductLoading &&
+              (productResults ?? []).map((product) => (
+                <button
+                  key={product._id}
+                  type="button"
+                  className="w-full text-left px-3 py-2 hover:bg-muted"
+                  onClick={() => handleSelectProduct(product)}
+                >
+                  <div className="font-medium text-foreground">{product.name}</div>
+                  {product.code && (
+                    <div className="text-xs text-muted-foreground">{product.code}</div>
+                  )}
+                </button>
+              ))}
+            {!isProductLoading && (productResults ?? []).length === 0 && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">No products found.</div>
             )}
           </div>
-          {showProductResults && productSearch.trim().length > 1 && (
-            <div className="mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-card shadow-sm text-sm">
-              {isProductLoading && (
-                <div className="px-3 py-2 text-muted-foreground">Searching...</div>
-              )}
-              {!isProductLoading &&
-                (productResults ?? []).map((product) => (
-                  <button
-                    key={product._id}
-                    type="button"
-                    className="w-full text-left px-3 py-2 hover:bg-muted"
-                    onClick={() => handleSelectProduct(product)}
-                  >
-                    <div className="font-medium text-foreground">{product.name}</div>
-                    {product.code && (
-                      <div className="text-xs text-muted-foreground">{product.code}</div>
-                    )}
-                  </button>
-                ))}
-              {!isProductLoading && (productResults ?? []).length === 0 && (
-                <div className="px-3 py-2 text-xs text-muted-foreground">No products found.</div>
-              )}
-            </div>
-          )}
         </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <Input
             type="date"

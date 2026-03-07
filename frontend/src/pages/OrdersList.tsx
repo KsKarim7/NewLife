@@ -150,7 +150,7 @@ export default function OrdersList() {
   const createOrderMutation = useMutation({
     mutationFn: createOrder,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"], exact: false });
       toast({ title: "Order created successfully" });
       closeSheet();
     },
@@ -168,7 +168,7 @@ export default function OrdersList() {
     mutationFn: ({ id, amount, note }: { id: string; amount: number; note?: string }) =>
       addPayment(id, { amount, note }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"], exact: false });
       toast({ title: "Payment recorded successfully" });
       setPayingOrder(null);
       setPaymentAmount("");
@@ -187,7 +187,7 @@ export default function OrdersList() {
   const cancelOrderMutation = useMutation({
     mutationFn: (id: string) => cancelOrder(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"], exact: false });
       toast({ title: "Order cancelled successfully" });
       setCancellingOrder(null);
     },
@@ -204,7 +204,7 @@ export default function OrdersList() {
   const deleteOrderMutation = useMutation({
     mutationFn: (id: string) => deleteOrder(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"], exact: false });
       toast({ title: "Order deleted successfully" });
       setDeletingOrder(null);
       setViewingOrder(null);

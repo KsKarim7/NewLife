@@ -196,14 +196,13 @@ export default function CustomersList() {
   const isSubmitting = createMutation.isPending || updateMutation.isPending || deleteCustomerMutation.isPending;
 
   return (
-    <PageLayout title="Customers" searchPlaceholder="Search customers by name or phone...">
+    <PageLayout
+      title="Customers"
+      searchPlaceholder="Search customers by name or phone..."
+      searchValue={search}
+      onSearchChange={(val) => setSearch(val)}
+    >
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-        <Input
-          placeholder="Search customers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-9 md:w-[260px]"
-        />
         <Button
           className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={openAddSheet}

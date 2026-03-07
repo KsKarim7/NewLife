@@ -227,3 +227,39 @@ exports.changeOwnEmail = async (req, res) => {
   });
 };
 
+exports.changeOwnName = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+    });
+  }
+
+  const { newName } = req.body;
+  const user = req.user;
+
+  if (!newName || newName.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Name cannot be empty',
+    });
+  }
+
+  user.name = newName.trim();
+  await user.save();
+
+  return res.json({
+    success: true,
+    message: 'Name changed successfully',
+    data: {
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    },
+  });
+};
+

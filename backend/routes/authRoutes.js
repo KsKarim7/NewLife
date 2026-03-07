@@ -7,6 +7,7 @@ const {
   getMe,
   changeOwnPassword,
   changeOwnEmail,
+  changeOwnName,
 } = require('../controllers/authController');
 const protect = require('../middleware/protect');
 
@@ -42,6 +43,13 @@ router.patch(
   protect,
   [body('newEmail').isEmail().withMessage('Valid email is required')],
   changeOwnEmail
+);
+
+router.patch(
+  '/me/name',
+  protect,
+  [body('newName').notEmpty().withMessage('Name is required')],
+  changeOwnName
 );
 
 module.exports = router;
