@@ -5,6 +5,7 @@ const InventoryTransaction = require('../models/InventoryTransaction');
 const Counter = require('../models/Counter');
 const Purchase = require('../models/Purchase');
 const Settings = require('../models/Settings');
+const { toLocalStartOfDay, toLocalEndOfDay } = require('../utils/dateUtils');
 
 const buildPagination = (total, page, limit) => {
   const pages = Math.max(1, Math.ceil(total / limit));
@@ -25,14 +26,12 @@ exports.getAllPurchaseReturns = async (req, res) => {
     };
 
     if (from) {
-      const fromDate = new Date(from);
-      fromDate.setHours(0, 0, 0, 0);
+      const fromDate = toLocalStartOfDay(from);
       conditions.push({ $gte: [effectiveField, fromDate] });
     }
 
     if (to) {
-      const toDate = new Date(to);
-      toDate.setHours(23, 59, 59, 999);
+      const toDate = toLocalEndOfDay(to);
       conditions.push({ $lte: [effectiveField, toDate] });
     }
 
@@ -238,12 +237,12 @@ exports.createPurchaseReturn = async (req, res) => {
       const settings = await Settings.findOne({});
       if (settings && settings.next_day_mode) {
         const now = new Date();
-        const tomorrow = new Date(Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate() + 1,
+        const tomorrow = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() + 1,
           0, 0, 0, 0
-        ));
+        );
         accounting_date = tomorrow;
       }
     } catch (settingsErr) {

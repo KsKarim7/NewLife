@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const InventoryTransaction = require('../models/InventoryTransaction');
 const Category = require('../models/Category');
+const { toLocalStartOfDay, toLocalEndOfDay } = require('../utils/dateUtils');
 
 const paisaToTakaString = (value) => {
   if (value === null || value === undefined) return '0.00';
@@ -17,10 +18,8 @@ const getDateRange = (period, from, to) => {
   endCurrent.setHours(23, 59, 59, 999);
 
   if (period === 'custom' && from && to) {
-    startCurrent = new Date(from);
-    startCurrent.setHours(0, 0, 0, 0);
-    endCurrent = new Date(to);
-    endCurrent.setHours(23, 59, 59, 999);
+    startCurrent = toLocalStartOfDay(from);
+    endCurrent = toLocalEndOfDay(to);
     const days = Math.ceil((endCurrent - startCurrent) / (24 * 60 * 60 * 1000)) + 1;
     return { startCurrent, endCurrent, days };
   }
