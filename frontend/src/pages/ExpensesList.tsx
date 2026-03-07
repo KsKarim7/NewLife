@@ -443,27 +443,25 @@ export default function ExpensesList() {
       </div>
 
       {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page === 1}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {pagination.pages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setPage(Math.min(pagination.pages, page + 1))}
-            disabled={page === pagination.pages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <Button
+          variant="outline"
+          onClick={() => setPage(Math.max(1, page - 1))}
+          disabled={page === 1}
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {page} of {pagination.pages}
+        </span>
+        <Button
+          variant="outline"
+          onClick={() => setPage(Math.min(pagination.pages, page + 1))}
+          disabled={page === pagination.pages}
+        >
+          Next
+        </Button>
+      </div>
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

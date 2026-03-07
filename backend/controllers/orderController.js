@@ -61,7 +61,7 @@ const convertOrderMoney = (orderObj) => {
 
 const buildPagination = (total, page, limit) => {
   const pages = Math.max(1, Math.ceil(total / limit));
-  return { total, page, limit, pages };
+  return { total, page, limit, pages, totalPages: pages };
 };
 
 exports.getAllOrders = async (req, res) => {
@@ -81,7 +81,10 @@ exports.getAllOrders = async (req, res) => {
       filter.createdAt.$gte = new Date(from);
     }
     if (to) {
-      filter.createdAt.$lte = new Date(to);
+      const toDate = new Date(to);
+      // Set to end of day (23:59:59.999) to include all orders created on this day
+      toDate.setHours(23, 59, 59, 999);
+      filter.createdAt.$lte = toDate;
     }
   }
 
@@ -100,11 +103,51 @@ exports.getAllOrders = async (req, res) => {
     convertOrderMoney(doc.toObject({ virtuals: true }))
   );
 
+  // Compute global summary (always across all non-deleted, non-cancelled orders)
+  const summary = await Order.aggregate([
+    {
+      $match: {
+        is_deleted: false,
+        status: { $ne: 'Cancelled' }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total_revenue_paisa: { $sum: '$total_paisa' },
+        total_due_paisa: {
+          $sum: {
+            $cond: [
+              { $gt: ['$amount_due_paisa', 0] },
+              '$amount_due_paisa',
+              0
+            ]
+          }
+        },
+        total_received_paisa: { $sum: '$amount_received_paisa' },
+        total_orders_count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const summaryData = summary[0] || {
+    total_revenue_paisa: 0,
+    total_due_paisa: 0,
+    total_received_paisa: 0,
+    total_orders_count: 0
+  };
+
   return res.json({
     success: true,
     data: {
       orders: transformed,
       pagination: buildPagination(total, page, limit),
+      summary: {
+        total_revenue: paisaToTakaString(summaryData.total_revenue_paisa),
+        total_due: paisaToTakaString(summaryData.total_due_paisa),
+        total_received: paisaToTakaString(summaryData.total_received_paisa),
+        total_orders: summaryData.total_orders_count
+      }
     },
   });
 };
@@ -385,9 +428,8 @@ exports.createOrder = async (req, res) => {
       await session.commitTransaction();
     }
 
-    const transformed = convertOrderMoney(
-      order.toObject({ virtuals: true })
-    );
+    const orderObj = order.toObject({ virtuals: true });
+    const transformed = convertOrderMoney(orderObj);
 
     return res.status(201).json({
       success: true,

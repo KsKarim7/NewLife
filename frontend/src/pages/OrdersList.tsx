@@ -137,6 +137,16 @@ export default function OrdersList() {
     enabled: shouldFetch,
   });
 
+  // Fetch global stats independently (no filters)
+  const { data: statsData } = useQuery<OrdersResponse>({
+    queryKey: ["orders-stats"],
+    queryFn: () =>
+      getOrders({
+        page: 1,
+        limit: 1,
+      }),
+  });
+
   const { data: customersData } = useQuery({
     queryKey: ["customers"],
     queryFn: () => getCustomers({ limit: 100 }),
@@ -221,13 +231,13 @@ export default function OrdersList() {
 
   const orders = ordersData?.orders ?? [];
   const pagination = ordersData?.pagination;
-  const totalOrders = pagination?.total ?? 0;
   const totalPages = pagination?.totalPages ?? 1;
 
-  // Calculate stats
-  const totalReceived = orders.reduce((sum, o) => sum + toPriceNumber(o.amount_received_paisa), 0);
-  const totalDue = orders.reduce((sum, o) => sum + toPriceNumber(o.amount_due_paisa), 0);
-  const totalRevenue = orders.reduce((sum, o) => sum + toPriceNumber(o.total_paisa), 0);
+  // Get global stats from summary (not from filtered data)
+  const summaryData = statsData?.summary;
+  const totalOrders = statsData?.pagination?.total ?? 0;
+  const totalRevenue = parseFloat(summaryData?.total_revenue ?? "0");
+  const totalDue = Math.max(0, parseFloat(summaryData?.total_due ?? "0"));
 
   // Helper functions for create order
   const openAddSheet = () => {
@@ -291,8 +301,30 @@ export default function OrdersList() {
   };
 
   const handleSubmitPayment = () => {
-    if (!payingOrder || !paymentAmount) return;
-    const amount = Math.round(parseFloat(paymentAmount));
+    if (!payingOrder) return;
+
+    const enteredAmount = parseFloat(paymentAmount || "0");
+    const dueAmount = toPriceNumber(payingOrder.amount_due_paisa);
+
+    if (enteredAmount > dueAmount) {
+      toast({
+        title: "Amount exceeds due",
+        description: `Maximum payable amount is ${formatCurrency(dueAmount)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (enteredAmount <= 0 || Number.isNaN(enteredAmount)) {
+      toast({
+        title: "Invalid amount",
+        description: "Payment amount must be greater than zero",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const amount = enteredAmount;
     addPaymentMutation.mutate({
       id: payingOrder._id,
       amount,
@@ -407,7 +439,7 @@ export default function OrdersList() {
         <StatCard
           label="Total Orders"
           value={String(totalOrders)}
-          trend={{ value: "This month", positive: true }}
+          trend={{ value: "Across all orders", positive: true }}
           icon={ShoppingCart}
           iconColor="text-primary"
           iconBg="bg-primary/10"
@@ -415,7 +447,7 @@ export default function OrdersList() {
         <StatCard
           label="Total Revenue"
           value={formatCurrency(totalRevenue)}
-          trend={{ value: `${orders.length} orders`, positive: true }}
+          trend={{ value: `${totalOrders} orders`, positive: true }}
           icon={DollarSign}
           iconColor="text-success"
           iconBg="bg-success/10"
@@ -423,7 +455,7 @@ export default function OrdersList() {
         <StatCard
           label="Pending Due"
           value={formatCurrency(totalDue)}
-          subtitle={`${orders.filter(o => o.amount_due_paisa > 0).length} orders`}
+          subtitle={totalDue > 0 ? "Due across all orders" : "No pending dues"}
           icon={AlertCircle}
           iconColor="text-warning"
           iconBg="bg-warning/10"
@@ -500,7 +532,7 @@ export default function OrdersList() {
                     <td className="px-4 py-3 text-table-body font-medium">{formatCurrency(toPriceNumber(o.total_paisa))}</td>
                     <td className="px-4 py-3 text-table-body text-success">{formatCurrency(toPriceNumber(o.amount_received_paisa))}</td>
                     <td className="px-4 py-3 text-table-body text-destructive font-medium">
-                      {o.amount_due_paisa > 0 ? formatCurrency(toPriceNumber(o.amount_due_paisa)) : "—"}
+                      {toPriceNumber(o.amount_due_paisa) > 0 ? formatCurrency(toPriceNumber(o.amount_due_paisa)) : "—"}
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={orderStatusToStatusType(o.status)} /></td>
                     <td className="px-4 py-3 text-table-body">
@@ -514,7 +546,7 @@ export default function OrdersList() {
                         >
                           <Eye className="h-3 w-3" />
                         </Button>
-                        {(o.status === "Confirmed" || o.status === "Partially Paid") && o.amount_due_paisa > 0 && (
+                        {toPriceNumber(o.amount_due_paisa) > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -590,29 +622,27 @@ export default function OrdersList() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 1}
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === totalPages}
-            onClick={() => setPage(p => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page === 1}
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page === totalPages}
+          onClick={() => setPage(p => p + 1)}
+        >
+          Next
+        </Button>
+      </div>
 
       {/* Create Order Sheet */}
       <Sheet open={isSheetOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -775,6 +805,8 @@ export default function OrdersList() {
               <Input
                 type="number"
                 step="0.01"
+                min="0.01"
+                max={payingOrder ? toPriceNumber(payingOrder.amount_due_paisa) : undefined}
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
                 placeholder="Enter amount"
@@ -978,3 +1010,4 @@ export default function OrdersList() {
     </PageLayout>
   );
 }
+

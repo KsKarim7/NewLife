@@ -44,6 +44,12 @@ export interface OrdersResponse {
     total: number;
     totalPages: number;
   };
+  summary?: {
+    total_revenue: string;
+    total_due: string;
+    total_received: string;
+    total_orders: number;
+  };
 }
 
 export interface OrdersQueryParams {
@@ -106,6 +112,7 @@ export const getOrders = async (
   return {
     orders,
     pagination: response.data.data.pagination,
+    summary: response.data.data.summary,
   };
 };
 

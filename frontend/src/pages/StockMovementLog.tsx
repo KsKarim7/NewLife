@@ -54,6 +54,13 @@ function mapReasonFilterToType(value: string): StockMovementType | undefined {
   }
 }
 
+function safeFormatOccurredAt(date: string | Date | null | undefined): string {
+  if (!date) return "—";
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "—";
+  return formatDateTime(d);
+}
+
 export default function StockMovementLog() {
   const [page, setPage] = useState(1);
   const [reasonFilter, setReasonFilter] = useState("all");
@@ -342,7 +349,7 @@ export default function StockMovementLog() {
                     )}
                   >
                     <td className="px-4 py-3 text-table-body text-muted-foreground">
-                      {movement.occurred_at ? formatDateTime(movement.occurred_at) : "—"}
+                      {safeFormatOccurredAt(movement.occurred_at)}
                     </td>
                     <td className="px-4 py-3 text-table-body font-medium">
                       {movement.product_name}
@@ -430,7 +437,7 @@ export default function StockMovementLog() {
                   {movement.product_name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {movement.occurred_at ? formatDateTime(movement.occurred_at) : "—"}
+                  {safeFormatOccurredAt(movement.occurred_at)}
                 </p>
               </div>
               <div className="flex items-center justify-between">

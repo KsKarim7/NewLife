@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AxiosError } from "axios";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/shared/StatCard";
@@ -101,6 +101,15 @@ export default function PurchaseReturnsList() {
   const products = productsData?.products ?? [];
   const pagination = returnsData?.pagination;
   const totalReturns = pagination?.total ?? 0;
+  const totalPages = pagination?.pages ?? 1;
+
+  const rangeText = useMemo(() => {
+    if (!totalReturns) return "Showing 0 results";
+    const limit = pagination?.limit ?? 10;
+    const start = (page - 1) * limit + 1;
+    const end = Math.min(page * limit, totalReturns);
+    return `Showing ${start}–${end} of ${totalReturns} results`;
+  }, [page, totalReturns, pagination?.limit]);
 
   // Calculate stats
   const totalQtyReturned = purchaseReturns.reduce((sum, r) => sum + r.lines.reduce((lineSum, l) => lineSum + l.qty, 0), 0);
@@ -314,6 +323,29 @@ export default function PurchaseReturnsList() {
             </div>
           ))
         )}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page === 1}
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page === totalPages}
+          onClick={() => setPage(p => p + 1)}
+        >
+          Next
+        </Button>
       </div>
 
       {/* Create Return Sheet */}
