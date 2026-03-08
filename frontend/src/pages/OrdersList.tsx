@@ -365,8 +365,29 @@ export default function OrdersList() {
   };
 
   const buildReceiptData = (order: Order): ReceiptData => {
-    const fmt = (val: string | number) =>
+    const totalNum = Math.max(0, toPriceNumber(order.total_paisa));
+    const paidNum = Math.max(0, toPriceNumber(order.amount_received_paisa));
+    const dueNum = Math.max(0, totalNum - paidNum);
+
+    const fmt = (val: number) => `Tk ${val.toFixed(2)}`;
+    const fmtLine = (val: string | number) =>
       `Tk ${Math.max(0, toPriceNumber(val)).toFixed(2)}`;
+
+    const d = new Date(order.createdAt);
+    const datePart = d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    });
+    const timePart = d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const dateStr = `${datePart} | ${timePart}`;
+
+    const year = new Date(order.createdAt).getFullYear();
+    const num = order.order_number.replace("ORD-", "").padStart(4, "0");
 
     return {
       storeName: settingsData?.store_info?.store_name ?? "YOUR SHOP NAME",
@@ -375,14 +396,8 @@ export default function OrdersList() {
       storePhone: settingsData?.store_info?.phone_number ?? "",
       salesRep: settingsData?.store_info?.owner_name ?? "Staff",
       orderNumber: order.order_number,
-      dateStr: new Date(order.createdAt).toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
+      invoiceId: `INV-${year}-${num}`,
+      dateStr,
       statusLabel:
         order.status === "Paid"
           ? "PAID"
@@ -396,12 +411,12 @@ export default function OrdersList() {
       items: order.lines.map((l) => ({
         name: l.product_name,
         qty: l.qty,
-        price: fmt(l.unit_price_paisa),
-        total: fmt(l.line_total_paisa),
+        price: fmtLine(l.unit_price_paisa),
+        total: fmtLine(l.line_total_paisa),
       })),
-      totalAmount: fmt(order.total_paisa),
-      paidAmount: fmt(order.amount_received_paisa),
-      dueAmount: fmt(Math.max(0, toPriceNumber(order.amount_due_paisa))),
+      totalAmount: fmt(totalNum),
+      paidAmount: fmt(paidNum),
+      dueAmount: fmt(dueNum),
     };
   };
 

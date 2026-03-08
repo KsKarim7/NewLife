@@ -27,6 +27,7 @@ export interface ReceiptData {
   storePhone: string;
   salesRep: string;
   orderNumber: string;
+  invoiceId: string;
   dateStr: string;
   statusLabel: string;
   items: { name: string; qty: number; price: string; total: string }[];
@@ -44,9 +45,9 @@ function center(text: string): string {
   return ' '.repeat(pad) + text;
 }
 
-function padRow(left: string, right: string): string {
-  const spaces = Math.max(1, LINE_WIDTH - left.length - right.length);
-  return left + ' '.repeat(spaces) + right;
+function summaryRow(label: string, value: string): string {
+  const labelPadded = label.padEnd(LINE_WIDTH - value.length);
+  return labelPadded + value;
 }
 
 export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
@@ -57,30 +58,35 @@ export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
   add(divider);
   add(center(data.storeName), { align: 'center', bold: true });
   add(center(data.storeAddress), { align: 'center' });
-  if (data.storePhone) add(center('Tel: ' + data.storePhone), { align: 'center' });
+  const phoneLine = data.storePhone.length > LINE_WIDTH - 5
+    ? data.storePhone.substring(0, LINE_WIDTH - 8) + '...'
+    : data.storePhone;
+  if (data.storePhone) add(center('Tel: ' + phoneLine), { align: 'center' });
   add(divider);
   add(`Sales Rep  : ${data.salesRep}`);
   add(`Order S/N  : ${data.orderNumber}`);
+  add(`Invoice ID : ${data.invoiceId}`);
   add(`Date & Time: ${data.dateStr}`);
   add(`Status     : ${data.statusLabel}`);
   add(thinDivider);
-  add('ITEM             QTY  PRICE   TOTAL');
+  add('ITEM INFO       QTY  PRICE   TOTAL');
   add(thinDivider);
 
   data.items.forEach((item, i) => {
-    const num = `${i + 1}. `;
-    const name = item.name.substring(0, 13).padEnd(13);
+    const num = `${i + 1}.`;
+    const name = item.name.substring(0, 14 - num.length);
+    const label = (num + name).padEnd(16);
     const qty = String(item.qty).padStart(3);
-    const price = item.price.padStart(7);
-    const total = item.total.padStart(7);
-    add(`${num}${name} ${qty} ${price} ${total}`);
+    const price = item.price.replace('Tk ', '').padStart(6);
+    const total = item.total.replace('Tk ', '').padStart(7);
+    add(`${label}${qty} ${price} ${total}`);
   });
 
   add(thinDivider);
-  add(padRow('TOTAL AMOUNT :', data.totalAmount));
-  add(padRow('PAID AMOUNT  :', data.paidAmount));
+  add(summaryRow('TOTAL AMOUNT          :', data.totalAmount));
+  add(summaryRow('PAID AMOUNT           :', data.paidAmount));
   add(thinDivider);
-  add(padRow('DUE AMOUNT   :', data.dueAmount), { bold: true });
+  add(summaryRow('DUE AMOUNT            :', data.dueAmount), { bold: true });
   add(divider);
   add(center('Thank you for shopping with us!'), { align: 'center' });
   add(center('Please come visit us again.'), { align: 'center' });
@@ -200,35 +206,52 @@ export function printViaWindowPrint(
     );
   }
 
+  const css = `
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 58mm;
+      max-width: 58mm;
+      overflow-x: hidden;
+    }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px;
+      line-height: 1.3;
+      padding: 1mm 2mm;
+      background: white;
+      color: black;
+    }
+    pre {
+      white-space: pre;
+      overflow: hidden;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px;
+      line-height: 1.3;
+      width: 100%;
+      max-width: 100%;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    @media print {
+      @page {
+        width: 58mm;
+        height: auto;
+        margin: 0;
+      }
+      html, body {
+        width: 58mm;
+        max-width: 58mm;
+      }
+    }
+  `;
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
       <title>Receipt - ${orderNumber}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 11px;
-          width: 58mm;
-          max-width: 58mm;
-          padding: 2mm;
-          background: white;
-          color: black;
-        }
-        pre {
-          white-space: pre-wrap;
-          word-break: break-word;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 11px;
-          line-height: 1.4;
-        }
-        @media print {
-          @page { width: 58mm; margin: 0; }
-          body  { width: 58mm; padding: 1mm; }
-        }
-      </style>
+      <style>${css}</style>
     </head>
     <body>
       <pre>${receiptText}</pre>
