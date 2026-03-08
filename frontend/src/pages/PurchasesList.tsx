@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Truck, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, Trash2, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePeriod } from "@/context/PeriodContext";
 import { getPurchases, createPurchase, addPurchasePayment, cancelPurchase, type Purchase, type PurchasesResponse } from "@/api/purchasesApi";
 import { getProducts as fetchProducts } from "@/api/productsApi";
 import {
@@ -71,17 +72,7 @@ interface PurchaseLineItem {
 
 export default function PurchasesList() {
   const [page, setPage] = useState(1);
-  const [period, setPeriod] = useState("7d");
-  const [dateFrom, setDateFrom] = useState(() => {
-    const initialRange = getPeriodDateRange("7d");
-    return initialRange?.from ?? "";
-  });
-  const [dateTo, setDateTo] = useState(() => {
-    const initialRange = getPeriodDateRange("7d");
-    return initialRange?.to ?? "";
-  });
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const { period, setPeriod, customFrom, setCustomFrom, customTo, setCustomTo } = usePeriod();
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
 
   // Payment and cancel dialog state
@@ -108,7 +99,8 @@ export default function PurchasesList() {
     if (period === "custom") {
       return { from: customFrom, to: customTo };
     }
-    return { from: dateFrom, to: dateTo };
+    const range = getPeriodDateRange(period);
+    return range || { from: "", to: "" };
   };
 
   const { from: queryFrom, to: queryTo } = getQueryDateRange();
@@ -264,27 +256,6 @@ export default function PurchasesList() {
     setSelectedProduct("");
     setQuantity(1);
     setBuyingPrice("");
-  };
-
-  const handlePeriodChange = (value: string) => {
-    let next = "7d";
-    if (value === "today") next = "today";
-    else if (value === "30") next = "30d";
-    else if (value === "month") next = "month";
-    else if (value === "custom") next = "custom";
-    setPeriod(next);
-    setPage(1);
- 
-    // Update date inputs based on period
-    if (next === "custom") {
-      // For custom, dates come from Header (customFrom/customTo)
-      setDateFrom("");
-      setDateTo("");
-    } else {
-      const { from, to } = getPeriodDateRange(next) || { from: "", to: "" };
-      setDateFrom(from);
-      setDateTo(to);
-    }
   };
 
   const handleRemoveLineItem = (index: number) => {
@@ -490,47 +461,6 @@ export default function PurchasesList() {
         >
           <Plus className="h-4 w-4 mr-1" /> Add Purchase
         </Button>
-      </div>
-
-      {/* Date Range Filter */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <div className="flex-1 min-w-[150px]">
-          <label className="text-xs text-muted-foreground mb-1 block">From Date</label>
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-        <div className="flex-1 min-w-[150px]">
-          <label className="text-xs text-muted-foreground mb-1 block">To Date</label>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-        {(dateFrom || dateTo) && (
-          <div className="flex items-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDateFrom("");
-                setDateTo("");
-                setPage(1);
-              }}
-            >
-              Clear Filters
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Desktop table */}

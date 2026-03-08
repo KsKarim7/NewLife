@@ -114,6 +114,7 @@ exports.createProduct = async (req, res) => {
     image_url,
     weight,
     weight_unit,
+    stock_qty,
   } = req.body;
 
   const existing = await Product.findOne({
@@ -130,6 +131,7 @@ exports.createProduct = async (req, res) => {
 
   const sellingPaisa = Math.round(parseFloat(selling_price) * 100);
   const buyingPaisa = Math.round(parseFloat(buying_price) * 100);
+  const initialStock = parseInt(stock_qty) || 0;
 
   const product = await Product.create({
     product_code,
@@ -144,7 +146,27 @@ exports.createProduct = async (req, res) => {
     image_url,
     weight,
     weight_unit,
+    on_hand: initialStock,
   });
+
+  // Create inventory transaction for initial stock if quantity > 0
+  if (initialStock > 0) {
+    const movementId = await Counter.nextVal('movements');
+
+    await InventoryTransaction.create({
+      movement_id: movementId,
+      product_id: product._id,
+      product_code: product.product_code,
+      product_name: product.name,
+      qty: initialStock,
+      type: 'adjustment',
+      source: {
+        doc_type: 'product_creation',
+        doc_number: product.product_code,
+      },
+      createdBy: req.user ? req.user._id : undefined,
+    });
+  }
 
   const transformed = convertMoneyFields(
     product.toObject({ virtuals: true })

@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { PeriodProvider } from "@/context/PeriodContext";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import CustomersList from "./pages/CustomersList";
@@ -52,24 +53,26 @@ const App = () => (
         }}
       >
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<RootRedirect />} />
-            <Route path="/login" element={<Login />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/customers" element={<CustomersList />} />
-              <Route path="/orders" element={<OrdersList />} />
-              <Route path="/sales-returns" element={<SalesReturnsList />} />
-              <Route path="/purchases" element={<PurchasesList />} />
-              <Route path="/purchase-returns" element={<PurchaseReturnsList />} />
-              <Route path="/expenses" element={<ExpensesList />} />
-              <Route path="/stock-log" element={<StockMovementLog />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <PeriodProvider>
+            <Routes>
+              <Route path="/" element={<RootRedirect />} />
+              <Route path="/login" element={<Login />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/customers" element={<CustomersList />} />
+                <Route path="/orders" element={<OrdersList />} />
+                <Route path="/sales-returns" element={<SalesReturnsList />} />
+                <Route path="/purchases" element={<PurchasesList />} />
+                <Route path="/purchase-returns" element={<PurchaseReturnsList />} />
+                <Route path="/expenses" element={<ExpensesList />} />
+                <Route path="/stock-log" element={<StockMovementLog />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PeriodProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
@@ -77,3 +80,4 @@ const App = () => (
 );
 
 export default App;
+

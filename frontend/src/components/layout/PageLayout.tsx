@@ -8,28 +8,18 @@ interface PageLayoutProps {
   children: ReactNode;
   title?: string;
   searchPlaceholder?: string;
-  periodValue?: string;
-  onPeriodChange?: (value: string) => void;
-  customFrom?: string;
-  customTo?: string;
-  onCustomFromChange?: (value: string) => void;
-  onCustomToChange?: (value: string) => void;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  showPeriodFilter?: boolean;
 }
 
 export function PageLayout({
   children,
   title,
   searchPlaceholder,
-  periodValue,
-  onPeriodChange,
-  customFrom,
-  customTo,
-  onCustomFromChange,
-  onCustomToChange,
   searchValue,
   onSearchChange,
+  showPeriodFilter = true,
 }: PageLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -54,12 +44,7 @@ export function PageLayout({
           searchPlaceholder={searchPlaceholder}
           searchValue={searchValue}
           onSearchChange={onSearchChange}
-          periodValue={periodValue}
-          onPeriodChange={onPeriodChange}
-          customFrom={customFrom}
-          customTo={customTo}
-          onCustomFromChange={onCustomFromChange}
-          onCustomToChange={onCustomToChange}
+          showPeriodFilter={showPeriodFilter}
           onMenuClick={() => setSidebarOpen(true)}
         />
         <main className="flex-1 p-4 md:p-6 overflow-auto">

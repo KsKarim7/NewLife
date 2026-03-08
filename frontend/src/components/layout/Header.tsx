@@ -12,17 +12,13 @@ import { useAuth } from "@/auth/AuthContext";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { getNextDayMode, setNextDayMode } from "@/api/nextDayApi";
+import { usePeriod } from "@/context/PeriodContext";
 
 interface HeaderProps {
   searchPlaceholder?: string;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
-  periodValue?: string;
-  onPeriodChange?: (value: string) => void;
-  customFrom?: string;
-  customTo?: string;
-  onCustomFromChange?: (value: string) => void;
-  onCustomToChange?: (value: string) => void;
+  showPeriodFilter?: boolean;
   onMenuClick?: () => void;
 }
 
@@ -30,12 +26,7 @@ export function Header({
   searchPlaceholder = "Search products, orders, customers...",
   searchValue,
   onSearchChange,
-  periodValue,
-  onPeriodChange,
-  customFrom,
-  customTo,
-  onCustomFromChange,
-  onCustomToChange,
+  showPeriodFilter = true,
   onMenuClick,
 }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -44,6 +35,7 @@ export function Header({
   const { toast } = useToast();
   const [nextDayMode, setNextDayModeState] = useState(false);
   const [isLoadingNextDayMode, setIsLoadingNextDayMode] = useState(false);
+  const { period, setPeriod, customFrom, setCustomFrom, customTo, setCustomTo } = usePeriod();
 
   useEffect(() => {
     let isMounted = true;
@@ -170,31 +162,34 @@ export function Header({
           </div>
 
           {/* Date range — hidden on mobile */}
-          <div className="hidden md:block">
-            <Select
-              value={periodValue ?? "7"}
-              onValueChange={(value) => onPeriodChange?.(value)}
-            >
-              <SelectTrigger className="w-[150px] h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="7">Last 7 days</SelectItem>
-                <SelectItem value="30">Last 30 days</SelectItem>
-                <SelectItem value="month">This month</SelectItem>
-                <SelectItem value="custom">Custom range</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {showPeriodFilter && (
+            <div className="hidden md:block">
+              <Select
+                value={period}
+                onValueChange={(value) => setPeriod(value)}
+              >
+                <SelectTrigger className="w-[150px] h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="month">This month</SelectItem>
+                  <SelectItem value="custom">Custom range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Custom date range inputs — show only when custom is selected */}
-          {periodValue === "custom" && (
+          {showPeriodFilter && period === "custom" && (
             <div className="hidden md:flex items-center gap-2">
               <Input
                 type="date"
                 value={customFrom ?? ""}
-                onChange={(e) => onCustomFromChange?.(e.target.value)}
+                onChange={(e) => setCustomFrom(e.target.value)}
                 placeholder="From"
                 className="h-9 text-sm w-32"
               />
@@ -202,7 +197,7 @@ export function Header({
               <Input
                 type="date"
                 value={customTo ?? ""}
-                onChange={(e) => onCustomToChange?.(e.target.value)}
+                onChange={(e) => setCustomTo(e.target.value)}
                 placeholder="To"
                 className="h-9 text-sm w-32"
               />

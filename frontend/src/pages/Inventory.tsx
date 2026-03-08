@@ -439,6 +439,7 @@ export default function Inventory() {
       vat_percent: values.vat_enabled ? values.vat_percent : undefined,
       description: values.description || undefined,
       image_url: values.image_url || undefined,
+      stock_qty: values.stock_qty || 0,
     };
 
     if (editingProduct) {

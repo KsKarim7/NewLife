@@ -187,7 +187,8 @@ export default function ExpensesList() {
     else if (value === "month") next = "month";
     else if (value === "custom") next = "custom";
     setPeriod(next);
-    
+    setPage(1);
+
     // Update date inputs based on period
     if (next === "custom") {
       // For custom, dates come from Header (customFrom/customTo)
@@ -234,10 +235,6 @@ export default function ExpensesList() {
     }
   };
 
-  const handleDateFilterChange = () => {
-    setPage(1);
-  };
-
   return (
     <PageLayout 
       title="Expenses" 
@@ -275,30 +272,7 @@ export default function ExpensesList() {
       </div>
 
       {/* Filters and Add button */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value);
-              handleDateFilterChange();
-            }}
-            placeholder="From date"
-            className="w-full md:w-40"
-          />
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value);
-              handleDateFilterChange();
-            }}
-            placeholder="To date"
-            className="w-full md:w-40"
-          />
-        </div>
-
+      <div className="flex items-center justify-end gap-2 mb-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <div className="hidden md:flex items-center gap-2">
             <Button variant="outline" size="sm">

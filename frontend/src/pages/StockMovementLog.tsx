@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { FileText, FileSpreadsheet } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -176,7 +175,8 @@ export default function StockMovementLog() {
     else if (value === "month") next = "month";
     else if (value === "custom") next = "custom";
     setPeriod(next);
-    
+    setPage(1);
+
     // Update date inputs based on period
     if (next !== "custom") {
       const { from, to } = getPeriodDateRange(next);
@@ -233,10 +233,6 @@ export default function StockMovementLog() {
             </Button>
           )}
         </div>
-        <div className="hidden md:flex items-center gap-2">
-          <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" /> Export PDF</Button>
-          <Button variant="outline" size="sm"><FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel</Button>
-        </div>
         {/* Mobile: filter + export in one row */}
         <div className="md:hidden flex items-center gap-2 w-full">
           <Select defaultValue="all">
@@ -282,30 +278,6 @@ export default function StockMovementLog() {
           </div>
         </div>
       )}
-
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2">
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value);
-              setPage(1);
-            }}
-            className="h-9 text-sm"
-          />
-          <span className="text-xs text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value);
-              setPage(1);
-            }}
-            className="h-9 text-sm"
-          />
-        </div>
-      </div>
 
       {/* Desktop table */}
       <div className="hidden md:block bg-card rounded-lg shadow-sm border border-border overflow-hidden">

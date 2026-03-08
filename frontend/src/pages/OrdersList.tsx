@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
+import { usePeriod } from "@/context/PeriodContext";
 import {
   Sheet,
   SheetContent,
@@ -71,9 +72,7 @@ export default function OrdersList() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [period, setPeriod] = useState("7d");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const { period, setPeriod, customFrom, setCustomFrom, customTo, setCustomTo } = usePeriod();
 
   // Create order sheet state
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -252,16 +251,6 @@ export default function OrdersList() {
     setIsSheetOpen(false);
   };
 
-  const handlePeriodChange = (value: string) => {
-    let next = "7d";
-    if (value === "today") next = "today";
-    else if (value === "30") next = "30d";
-    else if (value === "month") next = "month";
-    else if (value === "custom") next = "custom";
-    setPeriod(next);
-    setPage(1);
-  };
-
   const resetFormFields = () => {
     setCustomerName("");
     setCustomerPhone("");
@@ -429,12 +418,6 @@ export default function OrdersList() {
       searchPlaceholder="Search by order no or customer..."
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
-      periodValue={period === "today" ? "today" : period === "7d" ? "7" : period === "30d" ? "30" : period === "month" ? "month" : "custom"}
-      onPeriodChange={handlePeriodChange}
-      customFrom={customFrom}
-      customTo={customTo}
-      onCustomFromChange={setCustomFrom}
-      onCustomToChange={setCustomTo}
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
         <StatCard

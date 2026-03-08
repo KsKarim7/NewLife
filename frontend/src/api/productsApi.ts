@@ -138,6 +138,7 @@ export interface ProductPayload {
   vat_percent?: number;
   description?: string;
   image_url?: string;
+  stock_qty?: number;
 }
 
 export const getProductById = async (id: string): Promise<Product> => {
