@@ -8,7 +8,7 @@ import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X, Eye } from "lucide-react";
+import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X, Eye, Printer } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import { usePeriod } from "@/context/PeriodContext";
@@ -47,6 +47,15 @@ import {
 import { getOrders, type Order, type OrdersResponse, createOrder, type CreateOrderPayload, addPayment, cancelOrder, deleteOrder } from "@/api/ordersApi";
 import { getCustomers, type Customer } from "@/api/customersApi";
 import { getProducts, type Product } from "@/api/productsApi";
+import { getSettings } from "@/api/settingsApi";
+import {
+  printViaUSB,
+  printViaBluetooth,
+  printViaWindowPrint,
+  buildReceiptLines,
+  buildReceiptText,
+  type ReceiptData,
+} from "@/utils/thermalPrinter";
 
 interface AxiosError {
   response?: {
@@ -102,6 +111,10 @@ export default function OrdersList() {
   // Delete order dialog state
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
 
+  // Print receipt dialog state
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [printTargetOrder, setPrintTargetOrder] = useState<Order | null>(null);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -154,6 +167,11 @@ export default function OrdersList() {
   const { data: productsData } = useQuery({
     queryKey: ["products"],
     queryFn: () => getProducts({ limit: 100 }),
+  });
+
+  const { data: settingsData } = useQuery({
+    queryKey: ["settings"],
+    queryFn: getSettings,
   });
 
   const createOrderMutation = useMutation({
@@ -343,6 +361,82 @@ export default function OrdersList() {
   const handleConfirmDelete = () => {
     if (!deletingOrder) return;
     deleteOrderMutation.mutate(deletingOrder._id);
+  };
+
+  const buildReceiptData = (order: Order): ReceiptData => {
+    const fmt = (val: string | number) =>
+      `Tk ${Math.max(0, toPriceNumber(val)).toFixed(2)}`;
+
+    return {
+      storeName: settingsData?.store_info?.store_name ?? "YOUR SHOP NAME",
+      storeAddress:
+        settingsData?.store_info?.physical_address ?? "123 Business Road, City",
+      storePhone: settingsData?.store_info?.phone_number ?? "",
+      salesRep: settingsData?.store_info?.owner_name ?? "Staff",
+      orderNumber: order.order_number,
+      dateStr: new Date(order.createdAt).toLocaleString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }),
+      statusLabel:
+        order.status === "Paid"
+          ? "PAID"
+          : order.status === "Partially Paid"
+            ? "PARTIAL"
+            : order.status === "Confirmed"
+              ? "PENDING"
+              : order.status === "Cancelled"
+                ? "CANCELLED"
+                : order.status.toUpperCase(),
+      items: order.lines.map((l) => ({
+        name: l.product_name,
+        qty: l.qty,
+        price: fmt(l.unit_price_paisa),
+        total: fmt(l.line_total_paisa),
+      })),
+      totalAmount: fmt(order.total_paisa),
+      paidAmount: fmt(order.amount_received_paisa),
+      dueAmount: fmt(Math.max(0, toPriceNumber(order.amount_due_paisa))),
+    };
+  };
+
+  const printReceipt = (order: Order) => {
+    setPrintTargetOrder(order);
+    setShowPrintDialog(true);
+  };
+
+  const handlePrintMethod = async (method: "usb" | "bluetooth" | "window") => {
+    if (!printTargetOrder) return;
+    setShowPrintDialog(false);
+    setPrintTargetOrder(null);
+    const data = buildReceiptData(printTargetOrder);
+
+    try {
+      if (method === "usb") {
+        await printViaUSB(buildReceiptLines(data));
+        toast({ title: "Receipt printed successfully via USB" });
+      } else if (method === "bluetooth") {
+        await printViaBluetooth(buildReceiptLines(data));
+        toast({ title: "Receipt printed successfully via Bluetooth" });
+      } else {
+        printViaWindowPrint(
+          buildReceiptText(data),
+          printTargetOrder.order_number
+        );
+      }
+    } catch (err: unknown) {
+      toast({
+        title: "Print failed",
+        description:
+          (err instanceof Error ? err.message : null) ??
+          "Could not connect to printer.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmitOrder = () => {
@@ -959,7 +1053,19 @@ export default function OrdersList() {
             </div>
           )}
 
-          <SheetFooter className="mt-6">
+          <SheetFooter className="mt-6 flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full flex items-center gap-2"
+              onClick={() => viewingOrder && printReceipt(viewingOrder)}
+            >
+              <Printer className="h-4 w-4" />
+              Print Receipt
+            </Button>
+            <p className="text-xs text-muted-foreground text-center -mt-1">
+              USB &amp; Bluetooth require Chrome or Edge
+            </p>
             <Button
               type="button"
               variant="destructive"
@@ -971,6 +1077,50 @@ export default function OrdersList() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Print Receipt AlertDialog */}
+      <AlertDialog
+        open={showPrintDialog}
+        onOpenChange={(open) => {
+          setShowPrintDialog(open);
+          if (!open) setPrintTargetOrder(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Print Receipt</AlertDialogTitle>
+            <AlertDialogDescription>
+              How is your thermal printer connected to this device?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={() => handlePrintMethod("usb")}
+            >
+              🔌 USB — Direct print, no dialog (Chrome/Edge only)
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={() => handlePrintMethod("bluetooth")}
+            >
+              📶 Bluetooth — Direct print, no dialog (Chrome/Edge only)
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={() => handlePrintMethod("window")}
+            >
+              🖨️ System Print Dialog — works in any browser
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Order AlertDialog */}
       <AlertDialog open={deletingOrder !== null} onOpenChange={(open) => !open && setDeletingOrder(null)}>
