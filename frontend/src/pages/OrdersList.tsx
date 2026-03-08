@@ -1054,19 +1054,21 @@ export default function OrdersList() {
             </div>
           )}
 
-          <SheetFooter className="mt-6 flex flex-col gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full flex items-center gap-2"
-              onClick={() => viewingOrder && printReceipt(viewingOrder)}
-            >
-              <Printer className="h-4 w-4" />
-              Print Receipt
-            </Button>
-            <p className="text-xs text-muted-foreground text-center -mt-1">
-              USB &amp; Bluetooth require Chrome or Edge
-            </p>
+          <div className="flex flex-col gap-2 pt-4 border-t border-border mt-4">
+            <div className="flex flex-col items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2"
+                onClick={() => viewingOrder && printReceipt(viewingOrder)}
+              >
+                <Printer className="h-4 w-4" />
+                Print Receipt
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                USB &amp; Bluetooth require Chrome or Edge
+              </p>
+            </div>
             <Button
               type="button"
               variant="destructive"
@@ -1075,7 +1077,7 @@ export default function OrdersList() {
             >
               Delete Order
             </Button>
-          </SheetFooter>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -1087,39 +1089,59 @@ export default function OrdersList() {
           if (!open) setPrintTargetOrder(null);
         }}
       >
-        <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Print Receipt</AlertDialogTitle>
-            <AlertDialogDescription>
-              How is your thermal printer connected to this device?
+        <AlertDialogContent className="max-w-xs rounded-2xl p-0 overflow-hidden">
+          <div className="px-6 pt-6 pb-2">
+            <AlertDialogTitle className="text-lg font-semibold text-center">
+              Print Receipt
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground text-center mt-1">
+              How is your thermal printer connected?
             </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="flex flex-col gap-2 py-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3"
-              onClick={() => handlePrintMethod("usb")}
-            >
-              🔌 USB — Direct print, no dialog (Chrome/Edge only)
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3"
-              onClick={() => handlePrintMethod("bluetooth")}
-            >
-              📶 Bluetooth — Direct print, no dialog (Chrome/Edge only)
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3"
-              onClick={() => handlePrintMethod("window")}
-            >
-              🖨️ System Print Dialog — works in any browser
-            </Button>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-          </AlertDialogFooter>
+
+          <div className="flex flex-col px-4 pb-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handlePrintMethod("usb")}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-border hover:bg-muted transition-colors text-left"
+            >
+              <span className="text-xl">🔌</span>
+              <div>
+                <p className="text-sm font-medium">USB Cable</p>
+                <p className="text-xs text-muted-foreground">Direct print · Chrome or Edge only</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePrintMethod("bluetooth")}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-border hover:bg-muted transition-colors text-left"
+            >
+              <span className="text-xl">📶</span>
+              <div>
+                <p className="text-sm font-medium">Bluetooth</p>
+                <p className="text-xs text-muted-foreground">Direct print · Chrome or Edge only</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePrintMethod("window")}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-border hover:bg-muted transition-colors text-left"
+            >
+              <span className="text-xl">🖨️</span>
+              <div>
+                <p className="text-sm font-medium">System Print Dialog</p>
+                <p className="text-xs text-muted-foreground">Works in any browser</p>
+              </div>
+            </button>
+          </div>
+
+          <div className="px-4 pb-5 pt-1">
+            <AlertDialogCancel className="w-full rounded-xl border border-border text-sm font-medium">
+              Cancel
+            </AlertDialogCancel>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 
