@@ -26,6 +26,10 @@ export interface PurchaseReturnsResponse {
     total: number;
     pages: number;
   };
+  summary?: {
+    total_returns: number;
+    total_qty_returned: number;
+  };
 }
 
 export interface PurchaseReturnsQueryParams {

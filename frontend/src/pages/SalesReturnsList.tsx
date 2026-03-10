@@ -104,11 +104,18 @@ export default function SalesReturnsList() {
   const salesReturns = returnsData?.returns ?? [];
   const products = productsData?.products ?? [];
   const pagination = returnsData?.pagination;
-  const totalReturns = pagination?.total ?? 0;
+  const summary = returnsData?.summary ?? { total_returns: 0, total_qty_returned: 0 };
+  const totalReturns = summary?.total_returns ?? 0;
   const totalPages = pagination?.pages ?? 1;
+  const totalQtyReturned = summary?.total_qty_returned ?? 0;
 
-  // Calculate stats
-  const totalQtyReturned = salesReturns.reduce((sum, r) => sum + r.lines.reduce((lineSum, l) => lineSum + l.qty, 0), 0);
+  // Build period label for stat cards
+  const periodLabel = period === 'all'    ? 'All time'      :
+                      period === 'today'  ? 'Today'         :
+                      period === '7d'     ? 'Last 7 days'   :
+                      period === '30d'    ? 'Last 30 days'  :
+                      period === 'month'  ? 'This month'    :
+                      period === 'custom' ? 'Custom range'  : '';
 
   // Filter by search term locally
   const filteredReturns = salesReturns.filter(r =>
@@ -287,7 +294,7 @@ export default function SalesReturnsList() {
         <StatCard
           label="Total Returns"
           value={String(totalReturns)}
-          trend={{ value: "This month", positive: true }}
+          trend={{ value: periodLabel, positive: true }}
           icon={Package}
           iconColor="text-primary"
           iconBg="bg-primary/10"
@@ -295,7 +302,7 @@ export default function SalesReturnsList() {
         <StatCard
           label="Units Returned"
           value={String(totalQtyReturned)}
-          subtitle={`${filteredReturns.length} returns`}
+          subtitle={`${totalReturns} returns · ${periodLabel}`}
           icon={Package}
           iconColor="text-warning"
           iconBg="bg-warning/10"

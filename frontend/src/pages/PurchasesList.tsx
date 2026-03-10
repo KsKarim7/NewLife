@@ -132,13 +132,22 @@ export default function PurchasesList() {
   const purchases = purchasesData?.purchases ?? [];
   const products = productsData?.products ?? [];
   const pagination = purchasesData?.pagination;
-  const totalPurchases = pagination?.total ?? 0;
+  const summary = purchasesData?.summary ?? { net_amount: '0.00', paid_amount: '0.00', due_amount: '0.00', total_purchases: 0 };
+  const totalPurchases = summary?.total_purchases ?? 0;
   const totalPages = pagination?.pages ?? 1;
 
-  // Calculate stats
-  const totalNet = purchases.reduce((sum, p) => sum + toPriceNumber(p.net_amount_paisa), 0);
-  const totalPaid = purchases.reduce((sum, p) => sum + toPriceNumber(p.paid_amount_paisa), 0);
-  const totalDue = purchases.reduce((sum, p) => sum + toPriceNumber(p.due_amount_paisa), 0);
+  // Get period-aware stats from summary
+  const totalNet = parseFloat(summary?.net_amount ?? "0");
+  const totalPaid = parseFloat(summary?.paid_amount ?? "0");
+  const totalDue = parseFloat(summary?.due_amount ?? "0");
+
+  // Build period label for stat cards
+  const periodLabel = period === 'all'    ? 'All time'      :
+                      period === 'today'  ? 'Today'         :
+                      period === '7d'     ? 'Last 7 days'   :
+                      period === '30d'    ? 'Last 30 days'  :
+                      period === 'month'  ? 'This month'    :
+                      period === 'custom' ? 'Custom range'  : '';
 
   // Calculate current form values
   const netAmount = lineItems.reduce((sum, item) => {
@@ -417,7 +426,7 @@ export default function PurchasesList() {
         <StatCard
           label="Total Purchases"
           value={formatCurrency(totalNet)}
-          trend={{ value: `${totalPurchases} purchases`, positive: true }}
+          trend={{ value: `${totalPurchases} purchases · ${periodLabel}`, positive: true }}
           icon={Truck}
           iconColor="text-primary"
           iconBg="bg-primary/10"
@@ -425,7 +434,7 @@ export default function PurchasesList() {
         <StatCard
           label="Total Paid"
           value={formatCurrency(totalPaid)}
-          trend={{ value: "This month", positive: true }}
+          trend={{ value: periodLabel, positive: true }}
           icon={DollarSign}
           iconColor="text-success"
           iconBg="bg-success/10"
@@ -433,7 +442,7 @@ export default function PurchasesList() {
         <StatCard
           label="Total Due"
           value={formatCurrency(totalDue)}
-          subtitle={`${purchases.filter((p) => toPriceNumber(p.due_amount_paisa) > 0).length} pending`}
+          subtitle={totalDue > 0 ? `Due · ${periodLabel}` : "No pending dues"}
           icon={AlertCircle}
           iconColor="text-warning"
           iconBg="bg-warning/10"

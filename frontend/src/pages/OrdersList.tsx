@@ -150,14 +150,17 @@ export default function OrdersList() {
     enabled: shouldFetch,
   });
 
-  // Fetch global stats independently (no filters)
+  // Fetch period-aware stats independently (no status filter)
   const { data: statsData } = useQuery<OrdersResponse>({
-    queryKey: ["orders-stats"],
+    queryKey: ["orders-stats", fromDate, toDate],
     queryFn: () =>
       getOrders({
         page: 1,
         limit: 1,
+        from: fromDate || undefined,
+        to: toDate || undefined,
       }),
+    enabled: shouldFetch,
   });
 
   const { data: customersData } = useQuery({
@@ -251,11 +254,19 @@ export default function OrdersList() {
   const pagination = ordersData?.pagination;
   const totalPages = pagination?.totalPages ?? 1;
 
-  // Get global stats from summary (not from filtered data)
+  // Get period-aware stats from summary
   const summaryData = statsData?.summary;
-  const totalOrders = statsData?.pagination?.total ?? 0;
+  const totalOrders = summaryData?.total_orders ?? 0;
   const totalRevenue = parseFloat(summaryData?.total_revenue ?? "0");
   const totalDue = Math.max(0, parseFloat(summaryData?.total_due ?? "0"));
+
+  // Build period label for stat cards
+  const periodLabel = period === 'all'    ? 'All time'      :
+                      period === 'today'  ? 'Today'         :
+                      period === '7d'     ? 'Last 7 days'   :
+                      period === '30d'    ? 'Last 30 days'  :
+                      period === 'month'  ? 'This month'    :
+                      period === 'custom' ? 'Custom range'  : '';
 
   // Helper functions for create order
   const openAddSheet = () => {
@@ -533,7 +544,7 @@ export default function OrdersList() {
         <StatCard
           label="Total Orders"
           value={String(totalOrders)}
-          trend={{ value: "Across all orders", positive: true }}
+          trend={{ value: periodLabel, positive: true }}
           icon={ShoppingCart}
           iconColor="text-primary"
           iconBg="bg-primary/10"
@@ -541,7 +552,7 @@ export default function OrdersList() {
         <StatCard
           label="Total Revenue"
           value={formatCurrency(totalRevenue)}
-          trend={{ value: `${totalOrders} orders`, positive: true }}
+          trend={{ value: `${totalOrders} orders · ${periodLabel}`, positive: true }}
           icon={DollarSign}
           iconColor="text-success"
           iconBg="bg-success/10"
@@ -549,7 +560,7 @@ export default function OrdersList() {
         <StatCard
           label="Pending Due"
           value={formatCurrency(totalDue)}
-          subtitle={totalDue > 0 ? "Due across all orders" : "No pending dues"}
+          subtitle={totalDue > 0 ? `Due · ${periodLabel}` : "No pending dues"}
           icon={AlertCircle}
           iconColor="text-warning"
           iconBg="bg-warning/10"

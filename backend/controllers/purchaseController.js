@@ -94,11 +94,38 @@ exports.getAllPurchases = async (req, res) => {
     convertPurchaseMoney(doc.toObject({ virtuals: true }))
   );
 
+  // Compute summary with period awareness
+  const summaryAgg = await Purchase.aggregate([
+    { $match: filter },
+    {
+      $group: {
+        _id: null,
+        net_amount_paisa: { $sum: '$net_amount_paisa' },
+        paid_amount_paisa: { $sum: '$paid_amount_paisa' },
+        due_amount_paisa: { $sum: '$due_amount_paisa' },
+        total_purchases_count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const summaryData = summaryAgg[0] || {
+    net_amount_paisa: 0,
+    paid_amount_paisa: 0,
+    due_amount_paisa: 0,
+    total_purchases_count: 0
+  };
+
   return res.json({
     success: true,
     data: {
       purchases: transformed,
       pagination: buildPagination(total, page, limit),
+      summary: {
+        net_amount: paisaToTakaString(summaryData.net_amount_paisa),
+        paid_amount: paisaToTakaString(summaryData.paid_amount_paisa),
+        due_amount: paisaToTakaString(summaryData.due_amount_paisa),
+        total_purchases: summaryData.total_purchases_count
+      }
     },
   });
 };

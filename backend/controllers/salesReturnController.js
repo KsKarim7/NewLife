@@ -54,11 +54,36 @@ exports.getAllSalesReturns = async (req, res) => {
     .skip((page - 1) * limit)
     .limit(limit);
 
+  // Compute summary with period awareness
+  const summaryAgg = await SalesReturn.aggregate([
+    { $match: filter },
+    {
+      $group: {
+        _id: null,
+        total_returns_count: { $sum: 1 },
+        total_qty_returned: {
+          $sum: {
+            $sum: '$lines.qty'
+          }
+        }
+      }
+    }
+  ]);
+
+  const summaryData = summaryAgg[0] || {
+    total_returns_count: 0,
+    total_qty_returned: 0
+  };
+
   return res.json({
     success: true,
     data: {
       returns,
       pagination: buildPagination(total, page, limit),
+      summary: {
+        total_returns: summaryData.total_returns_count,
+        total_qty_returned: summaryData.total_qty_returned
+      }
     },
   });
 };

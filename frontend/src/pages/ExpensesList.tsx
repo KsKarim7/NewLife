@@ -96,6 +96,14 @@ export default function ExpensesList() {
     pages: 1,
   };
 
+  // Build period label for stat cards
+  const periodLabel = period === 'all'    ? 'All time'      :
+                      period === 'today'  ? 'Today'         :
+                      period === '7d'     ? 'Last 7 days'   :
+                      period === '30d'    ? 'Last 30 days'  :
+                      period === 'month'  ? 'This month'    :
+                      period === 'custom' ? 'Custom range'  : '';
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (payload) =>
@@ -216,6 +224,7 @@ export default function ExpensesList() {
         <StatCard
           label="Total Expenses"
           value={isLoading ? "—" : formatCurrency(parseFloat(summary.total_amount))}
+          trend={{ value: periodLabel, positive: true }}
           icon={Wallet}
           iconColor="text-primary"
           iconBg="bg-primary/10"
@@ -223,6 +232,7 @@ export default function ExpensesList() {
         <StatCard
           label="Total Paid"
           value={isLoading ? "—" : formatCurrency(parseFloat(summary.total_paid))}
+          trend={{ value: periodLabel, positive: true }}
           icon={DollarSign}
           iconColor="text-success"
           iconBg="bg-success/10"
@@ -230,6 +240,7 @@ export default function ExpensesList() {
         <StatCard
           label="Total Due"
           value={isLoading ? "—" : formatCurrency(parseFloat(summary.total_due))}
+          subtitle={parseFloat(summary.total_due) > 0 ? `Due · ${periodLabel}` : "No pending dues"}
           icon={AlertCircle}
           iconColor="text-warning"
           iconBg="bg-warning/10"

@@ -115,13 +115,36 @@ exports.getAllOrders = async (req, res) => {
     convertOrderMoney(doc.toObject({ virtuals: true }))
   );
 
-  // Compute global summary (always across all non-deleted, non-cancelled orders)
+  // Build summary match with same date filter as list, but exclude Cancelled
+  const summaryMatch = { is_deleted: false, status: { $ne: 'Cancelled' } };
+
+  if (from || to) {
+    const conditions = [];
+    const effectiveField = {
+      $ifNull: ['$accounting_date', '$createdAt'],
+    };
+
+    if (from) {
+      const fromDate = toLocalStartOfDay(from);
+      conditions.push({ $gte: [effectiveField, fromDate] });
+    }
+
+    if (to) {
+      const toDate = toLocalEndOfDay(to);
+      conditions.push({ $lte: [effectiveField, toDate] });
+    }
+
+    if (conditions.length === 1) {
+      summaryMatch.$expr = conditions[0];
+    } else if (conditions.length === 2) {
+      summaryMatch.$expr = { $and: conditions };
+    }
+  }
+
+  // Compute summary with period awareness
   const summary = await Order.aggregate([
     {
-      $match: {
-        is_deleted: false,
-        status: { $ne: 'Cancelled' }
-      }
+      $match: summaryMatch
     },
     {
       $group: {

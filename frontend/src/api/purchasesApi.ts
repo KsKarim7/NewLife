@@ -31,6 +31,12 @@ export interface PurchasesResponse {
     total: number;
     pages: number;
   };
+  summary?: {
+    net_amount: string;
+    paid_amount: string;
+    due_amount: string;
+    total_purchases: number;
+  };
 }
 
 export interface PurchasesQueryParams {

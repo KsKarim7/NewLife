@@ -99,8 +99,10 @@ export default function PurchaseReturnsList() {
   const purchases = purchasesData?.purchases ?? [];
   const products = productsData?.products ?? [];
   const pagination = returnsData?.pagination;
-  const totalReturns = pagination?.total ?? 0;
+  const summary = returnsData?.summary ?? { total_returns: 0, total_qty_returned: 0 };
+  const totalReturns = summary?.total_returns ?? 0;
   const totalPages = pagination?.pages ?? 1;
+  const totalQtyReturned = summary?.total_qty_returned ?? 0;
 
   const rangeText = useMemo(() => {
     if (!totalReturns) return "Showing 0 results";
@@ -110,8 +112,13 @@ export default function PurchaseReturnsList() {
     return `Showing ${start}–${end} of ${totalReturns} results`;
   }, [page, totalReturns, pagination?.limit]);
 
-  // Calculate stats
-  const totalQtyReturned = purchaseReturns.reduce((sum, r) => sum + r.lines.reduce((lineSum, l) => lineSum + l.qty, 0), 0);
+  // Build period label for stat cards
+  const periodLabel = period === 'all'    ? 'All time'      :
+                      period === 'today'  ? 'Today'         :
+                      period === '7d'     ? 'Last 7 days'   :
+                      period === '30d'    ? 'Last 30 days'  :
+                      period === 'month'  ? 'This month'    :
+                      period === 'custom' ? 'Custom range'  : '';
 
   // Filter by search term locally
   const filteredReturns = purchaseReturns.filter(r =>
@@ -229,8 +236,8 @@ export default function PurchaseReturnsList() {
       onSearchChange={setSearchTerm}
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
-        <StatCard label="Total Returns" value={totalReturns.toString()} icon={Package} iconColor="text-primary" iconBg="bg-primary/10" />
-        <StatCard label="Total Units Returned" value={totalQtyReturned.toString()} icon={Package} iconColor="text-success" iconBg="bg-success/10" />
+        <StatCard label="Total Returns" value={totalReturns.toString()} trend={{ value: periodLabel, positive: true }} icon={Package} iconColor="text-primary" iconBg="bg-primary/10" />
+        <StatCard label="Total Units Returned" value={totalQtyReturned.toString()} subtitle={`${totalReturns} returns · ${periodLabel}`} icon={Package} iconColor="text-success" iconBg="bg-success/10" />
       </div>
 
       <div className="flex items-center justify-between mb-4">
