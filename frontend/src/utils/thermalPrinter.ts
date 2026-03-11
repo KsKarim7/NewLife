@@ -1,3 +1,30 @@
+// Web API type declarations
+declare global {
+  interface SerialPort {
+    open(options: { baudRate: number }): Promise<void>;
+    close(): Promise<void>;
+    writable: WritableStream<Uint8Array>;
+  }
+
+  interface BluetoothDevice {
+    gatt?: BluetoothRemoteGATTServer;
+  }
+
+  interface BluetoothRemoteGATTServer {
+    connect(): Promise<BluetoothRemoteGATTServer>;
+    getPrimaryService(uuid: string): Promise<BluetoothService>;
+    disconnect(): void;
+  }
+
+  interface BluetoothService {
+    getCharacteristic(uuid: string): Promise<BluetoothCharacteristic>;
+  }
+
+  interface BluetoothCharacteristic {
+    writeValueWithoutResponse(value: Uint8Array): Promise<void>;
+  }
+}
+
 // ESC/POS command bytes
 const ESC = 0x1b;
 const GS = 0x1d;

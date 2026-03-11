@@ -481,7 +481,7 @@ export default function PurchaseReturnsList() {
             {(() => {
               const selectedProd = selectedProduct ? products.find(p => p._id === selectedProduct) : null;
               const qty = parseFloat(String(quantity)) || 0;
-              const price = selectedProd ? parseFloat(String(selectedProd.buying_price || selectedProd.buying_price_taka || 0)) : 0;
+              const price = selectedProd ? parseFloat(String(selectedProd.buying_price_taka || 0)) : 0;
               const returnValue = qty * price;
               return returnValue > 0 ? (
                 <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">

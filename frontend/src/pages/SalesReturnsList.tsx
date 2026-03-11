@@ -536,7 +536,7 @@ export default function SalesReturnsList() {
               {(() => {
                 const selectedProd = selectedProduct ? products.find(p => p._id === selectedProduct) : null;
                 const qty = parseFloat(String(quantity)) || 0;
-                const price = selectedProd ? parseFloat(String(selectedProd.selling_price_taka || selectedProd.price || 0)) : 0;
+                const price = selectedProd ? parseFloat(String(selectedProd.selling_price_taka || 0)) : 0;
                 const returnValue = qty * price;
                 return returnValue > 0 ? (
                   <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border mb-3">
