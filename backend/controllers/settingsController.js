@@ -168,6 +168,88 @@ exports.updateRetention = async (req, res) => {
   }
 };
 
+// Logo Upload
+exports.uploadLogo = async (req, res) => {
+  try {
+    const { logo_base64 } = req.body;
+
+    if (!logo_base64) {
+      return res.status(400).json({
+        success: false,
+        message: 'No logo data provided',
+      });
+    }
+
+    const validPrefixes = [
+      'data:image/png;base64,',
+      'data:image/jpeg;base64,',
+      'data:image/jpg;base64,',
+      'data:image/webp;base64,',
+      'data:image/svg+xml;base64,',
+    ];
+    const isValid = validPrefixes.some(p => logo_base64.startsWith(p));
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid image format. Allowed: PNG, JPG, WEBP, SVG',
+      });
+    }
+
+    // ~200KB file = ~270KB base64 string
+    if (logo_base64.length > 300000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Logo too large. Maximum file size is 200KB.',
+      });
+    }
+
+    // Check authorization
+    if (req.user.role !== 'owner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only owner can update logo',
+      });
+    }
+
+    const settings = await Settings.findOneAndUpdate(
+      {},
+      { $set: { 'store_info.logo_base64': logo_base64 } },
+      { new: true, upsert: true }
+    );
+
+    return res.json({
+      success: true,
+      data: { logo_base64: settings.store_info.logo_base64 },
+      message: 'Logo saved successfully',
+    });
+  } catch (err) {
+    console.error('uploadLogo error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Logo Removal
+exports.removeLogo = async (req, res) => {
+  try {
+    // Check authorization
+    if (req.user.role !== 'owner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only owner can remove logo',
+      });
+    }
+
+    await Settings.findOneAndUpdate(
+      {},
+      { $set: { 'store_info.logo_base64': null } },
+      { upsert: true }
+    );
+    return res.json({ success: true, message: 'Logo removed' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // Next Day Accounting Mode
 exports.getNextDayMode = async (req, res) => {
   try {

@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSettings, updateStoreInfo, getRetentionSettings, updateRetention, listUsers, createUser, updateUser, deactivateUser } from "@/api/settingsApi";
 import type { User, CreateUserPayload, UpdateUserPayload } from "@/api/settingsApi";
+import axiosClient from "@/api/axiosClient";
 import { Loader2, Upload, Edit2, Trash2, Plus, RotateCcw } from "lucide-react";
-
-// For logo upload to Cloudinary
-const CLOUDINARY_CLOUD_NAME = "dbnhzz2sj";
-const CLOUDINARY_UPLOAD_PRESET = "stock_core_public";
 
 // Helper function to extract error message
 const getErrorMessage = (error: unknown): string => {
@@ -69,7 +67,6 @@ export default function Settings() {
     city: "",
   });
   const [logoUrl, setLogoUrl] = useState<string>("");
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Retention state
   const [retentionDays, setRetentionDays] = useState(30);
@@ -208,63 +205,78 @@ export default function Settings() {
   };
 
   // Handle logo upload
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadLogoMutation = useMutation({
+    mutationFn: async (base64: string) => {
+      const response = await axiosClient.post('/settings/logo', { logo_base64: base64 });
+      if (!response.data?.success) throw new Error(response.data?.message ?? 'Upload failed');
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      toast({ title: 'Logo saved successfully' });
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Failed to save logo',
+        description: err?.message ?? 'Please try again',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const removeLogoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await axiosClient.delete('/settings/logo');
+      if (!response.data?.success) throw new Error('Remove failed');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      toast({ title: 'Logo removed' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to remove logo', variant: 'destructive' });
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file
-    const validFormats = ["image/png", "image/jpeg", "image/svg+xml"];
-    if (!validFormats.includes(file.type)) {
-      toast({ title: "Only PNG, JPG, JPEG, and SVG formats are allowed", variant: "destructive" });
-      return;
-    }
-
-    const maxSizeBytes = 2 * 1024 * 1024; // 2MB
-    if (file.size > maxSizeBytes) {
-      toast({ title: "File size must be less than 2MB", variant: "destructive" });
-      return;
-    }
-
-    // Upload to Cloudinary
-    setIsUploadingLogo(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: "POST",
-        body: formData,
+    // Client-side size check — 200KB
+    if (file.size > 200 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Logo must be under 200KB. Please resize the image and try again.',
+        variant: 'destructive',
       });
-
-      if (!response.ok) {
-        throw new Error(`Cloudinary upload failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      const logoUrlFromCloudinary = data.secure_url;
-
-      // Save logo URL to settings
-      try {
-        await updateStoreInfoMutation.mutateAsync({
-          ...storeFormData,
-          logo_url: logoUrlFromCloudinary,
-        });
-        setLogoUrl(logoUrlFromCloudinary);
-        queryClient.invalidateQueries({ queryKey: ["settings"] });
-        toast({ title: "Logo uploaded successfully" });
-      } catch (apiErr: unknown) {
-        console.error("Failed to save logo to backend:", apiErr);
-        const errorMsg = getErrorMessage(apiErr) || "Failed to save logo to server";
-        toast({ title: errorMsg, variant: "destructive" });
-      }
-    } catch (err: unknown) {
-      console.error("Logo upload error:", err);
-      const errorMsg = getErrorMessage(err) || "Failed to upload logo";
-      toast({ title: errorMsg, variant: "destructive" });
-    } finally {
-      setIsUploadingLogo(false);
+      e.target.value = '';
+      return;
     }
+
+    // Allowed types
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    if (!allowed.includes(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Only PNG, JPG, WEBP, and SVG files are allowed.',
+        variant: 'destructive',
+      });
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      uploadLogoMutation.mutate(base64);
+    };
+    reader.onerror = () => {
+      toast({ title: 'Failed to read file', variant: 'destructive' });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // reset so same file can be re-selected
   };
 
   // Handle retention form
@@ -329,6 +341,30 @@ export default function Settings() {
     }, 2000);
   };
 
+  // Change Password mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) => {
+      const response = await axiosClient.patch('/auth/me/password', { currentPassword, newPassword });
+      if (!response.data?.success) throw new Error(response.data?.message ?? 'Password change failed');
+      return response.data;
+    },
+    onSuccess: () => {
+      setChangePasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      toast({ title: 'Password changed successfully. Please log in again.' });
+      setTimeout(() => {
+        logout();
+        navigate('/login');
+      }, 1500);
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Failed to change password',
+        description: err?.message ?? 'Please try again',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Handle change password
   const handleChangePassword = async () => {
     if (!changePasswordForm.currentPassword || !changePasswordForm.newPassword) {
@@ -343,12 +379,10 @@ export default function Settings() {
       toast({ title: "New password must be at least 8 characters", variant: "destructive" });
       return;
     }
-    // In a real implementation, this would call the API
-    toast({ title: "Password updated. You will be logged out." });
-    setTimeout(() => {
-      logout();
-      navigate("/login");
-    }, 2000);
+    changePasswordMutation.mutate({
+      currentPassword: changePasswordForm.currentPassword,
+      newPassword: changePasswordForm.newPassword,
+    });
   };
 
   return (
@@ -430,9 +464,16 @@ export default function Settings() {
                     <Upload className="mx-auto w-8 h-8 text-gray-400" />
                     <span className="text-sm">Click to upload logo</span>
                   </div>
-                  <input type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogoUpload} disabled={isUploadingLogo} className="hidden" />
+                  <input 
+                    ref={fileInputRef}
+                    type="file" 
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml" 
+                    onChange={handleFileChange} 
+                    disabled={uploadLogoMutation.isPending} 
+                    className="hidden" 
+                  />
                 </label>
-                {isUploadingLogo && <div className="text-center text-sm text-gray-500">Uploading...</div>}
+                {uploadLogoMutation.isPending && <div className="text-center text-sm text-gray-500">Uploading...</div>}
               </div>
             </CardContent>
           </Card>
@@ -581,7 +622,8 @@ export default function Settings() {
                   <Label>Confirm Password</Label>
                   <Input type="password" value={changePasswordForm.confirmPassword} onChange={(e) => setChangePasswordForm({ ...changePasswordForm, confirmPassword: e.target.value })} />
                 </div>
-                <Button onClick={handleChangePassword} className="w-full">
+                <Button onClick={handleChangePassword} disabled={changePasswordMutation.isPending} className="w-full">
+                  {changePasswordMutation.isPending ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : null}
                   Update Password
                 </Button>
               </CardContent>
@@ -595,6 +637,9 @@ export default function Settings() {
         <SheetContent>
           <SheetHeader>
             <SheetTitle>Create New User</SheetTitle>
+            <SheetDescription className="sr-only">
+              Form to create a new user account with name, email, role, and password
+            </SheetDescription>
           </SheetHeader>
           <div className="space-y-4 mt-6">
             <div className="space-y-2">
@@ -638,6 +683,9 @@ export default function Settings() {
         <SheetContent>
           <SheetHeader>
             <SheetTitle>Edit User</SheetTitle>
+            <SheetDescription className="sr-only">
+              Form to edit user name and phone information
+            </SheetDescription>
           </SheetHeader>
           <div className="space-y-4 mt-6">
             <div className="space-y-2">

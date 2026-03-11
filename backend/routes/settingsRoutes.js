@@ -7,6 +7,8 @@ const {
   updateRetention,
   getNextDayMode,
   setNextDayMode,
+  uploadLogo,
+  removeLogo,
   listUsers,
   createUser,
   updateUser,
@@ -37,6 +39,10 @@ router.post('/next-day-mode', protect, setNextDayMode);
 
 // User Management
 router.get('/users', protect, listUsers);
+
+// Logo endpoints
+router.post('/logo', protect, uploadLogo);
+router.delete('/logo', protect, removeLogo);
 
 router.post(
   '/users',

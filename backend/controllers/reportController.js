@@ -1,5 +1,6 @@
 const { generatePDF, generateExcel } = require('../utils/exportService');
 const reportTemplates = require('../utils/reportTemplates');
+const { toLocalStartOfDay, toLocalEndOfDay } = require('../utils/dateUtils');
 const Order = require('../models/Order');
 const Purchase = require('../models/Purchase');
 const SalesReturn = require('../models/SalesReturn');
@@ -31,7 +32,6 @@ const getFilename = (module, format, date) => {
 };
 
 const fetchData = async (module, from, to) => {
-  const filter = {};
   const dateField = ['sales', 'stock-movements'].includes(module)
     ? 'createdAt'
     : module === 'expenses'
@@ -40,42 +40,46 @@ const fetchData = async (module, from, to) => {
     ? 'date'
     : 'return_date';
 
-  filter[dateField] = { $gte: from, $lte: to };
-
-  if (module === 'sales' || module === 'purchases' || module === 'expenses') {
-    filter.is_deleted = false;
-  }
+  const dateFilter = {
+    [dateField]: { $gte: from, $lte: to }
+  };
 
   switch (module) {
     case 'sales':
       return {
-        orders: await Order.find(filter)
+        orders: await Order.find({
+          ...dateFilter,
+          status: { $nin: ['Cancelled', 'Returned'] }
+        })
           .sort({ createdAt: -1 })
           .lean(),
       };
     case 'purchases':
       return {
-        purchases: await Purchase.find(filter).sort({ date: -1 }).lean(),
+        purchases: await Purchase.find({
+          ...dateFilter,
+          status: { $ne: 'Cancelled' }
+        }).sort({ date: -1 }).lean(),
       };
     case 'sales-returns':
       return {
-        returns: await SalesReturn.find(filter)
+        returns: await SalesReturn.find(dateFilter)
           .sort({ return_date: -1 })
           .lean(),
       };
     case 'purchase-returns':
       return {
-        returns: await PurchaseReturn.find(filter)
+        returns: await PurchaseReturn.find(dateFilter)
           .sort({ date: -1 })
           .lean(),
       };
     case 'expenses':
       return {
-        expenses: await Expense.find(filter).sort({ date: -1 }).lean(),
+        expenses: await Expense.find(dateFilter).sort({ date: -1 }).lean(),
       };
     case 'stock-movements':
       return {
-        transactions: await InventoryTransaction.find(filter)
+        transactions: await InventoryTransaction.find(dateFilter)
           .populate('product_id', 'name product_code')
           .sort({ createdAt: -1 })
           .lean(),
@@ -278,12 +282,11 @@ const createReportHandler = (module) => async (req, res) => {
 
   if (!from || !to) {
     const def = getDefaultDateRange();
-    from = from ? new Date(from) : def.from;
-    to = to ? new Date(to) : def.to;
+    from = from ? toLocalStartOfDay(from) : def.from;
+    to = to ? toLocalEndOfDay(to) : def.to;
   } else {
-    from = new Date(from);
-    to = new Date(to);
-    to.setHours(23, 59, 59, 999);
+    from = toLocalStartOfDay(from);
+    to = toLocalEndOfDay(to);
   }
 
   const dateRange = { from, to };

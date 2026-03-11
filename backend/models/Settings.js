@@ -10,6 +10,7 @@ const settingsSchema = new mongoose.Schema(
       physical_address: String,
       city: String,
       logo_url: String,
+      logo_base64: { type: String, default: null },
       currency_symbol: {
         type: String,
         default: '৳',

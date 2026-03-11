@@ -113,7 +113,7 @@ function ReportCard({ name, description, module }: ReportCardConfig) {
 
 export default function Reports() {
   return (
-    <PageLayout title="Reports & Exports" searchPlaceholder="Search reports..." showPeriodFilter={false}>
+    <PageLayout title="Reports & Exports" searchPlaceholder="Search reports..." showPeriodFilter={true}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         {reportConfigs.map((config) => (
           <ReportCard
