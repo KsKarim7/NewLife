@@ -12,8 +12,10 @@ export interface PurchaseLine {
 export interface Purchase {
   _id: string;
   purchase_number: string;
+  party_name: string;
   date: string;
   lines: PurchaseLine[];
+  note?: string;
   net_amount_paisa: number;
   paid_amount_paisa: number;
   due_amount_paisa: number;
@@ -47,13 +49,18 @@ export interface PurchasesQueryParams {
 }
 
 export interface CreatePurchasePayload {
+  party_name: string;
   date?: string;
   lines: Array<{
     product_id: string;
+    product_code: string;
+    product_name: string;
     qty: number;
-    buying_price: string;
+    selling_price_paisa: number;
+    buying_price_paisa: number;
   }>;
   paid_amount?: number;
+  note?: string;
 }
 
 const normalizePurchase = (
@@ -62,8 +69,10 @@ const normalizePurchase = (
   return {
     _id: item._id,
     purchase_number: item.purchase_number,
+    party_name: item.party_name,
     date: item.date,
     lines: item.lines,
+    note: item.note,
     net_amount_paisa: item.net_amount_paisa,
     paid_amount_paisa: item.paid_amount_paisa,
     due_amount_paisa: item.due_amount_paisa,
@@ -90,6 +99,7 @@ export const getPurchases = async (
   return {
     purchases,
     pagination: response.data.data.pagination,
+    summary: response.data.data.summary,
   };
 };
 

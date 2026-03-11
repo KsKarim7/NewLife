@@ -4,7 +4,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
-import { formatDateTime } from "@/utils/formatDate";
+import { formatDate, formatDateTime } from "@/utils/formatDate";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,6 +79,7 @@ interface PurchaseLineItem {
   product_code: string;
   product_name: string;
   qty: number;
+  selling_price_paisa: number;
   buying_price_paisa: number;
 }
 
@@ -101,11 +102,12 @@ export default function PurchasesList() {
 
   // Create Purchase form state
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
+  const [partyName, setPartyName] = useState("");
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [buyingPrice, setBuyingPrice] = useState("");
   const [lineItems, setLineItems] = useState<PurchaseLineItem[]>([]);
   const [paidAmount, setPaidAmount] = useState("");
+  const [purchaseNote, setPurchaseNote] = useState("");
 
   // Product search state for combobox
   const [productSearch, setProductSearch] = useState('');
@@ -181,18 +183,26 @@ export default function PurchasesList() {
   // Create Purchase mutation
   const createPurchaseMutation = useMutation({
     mutationFn: async () => {
+      if (!partyName.trim()) {
+        throw new Error("Supplier/Party name is required");
+      }
       if (lineItems.length === 0) {
         throw new Error("Add at least one product to the purchase");
       }
 
       const payload = {
+        party_name: partyName,
         date: purchaseDate ? purchaseDate : undefined,
         lines: lineItems.map((item) => ({
           product_id: item.product_id,
+          product_code: item.product_code,
+          product_name: item.product_name,
           qty: item.qty,
-          buying_price: paisaToTaka(item.buying_price_paisa).toFixed(2),
+          selling_price_paisa: item.selling_price_paisa,
+          buying_price_paisa: item.buying_price_paisa,
         })),
         paid_amount: paidAmount ? parseFloat(paidAmount) : 0,
+        note: purchaseNote || undefined,
       };
 
       return createPurchase(payload);
@@ -202,11 +212,12 @@ export default function PurchasesList() {
       setIsCreateSheetOpen(false);
       // Reset form
       setPurchaseDate(new Date().toISOString().split("T")[0]);
+      setPartyName("");
       setSelectedProduct("");
       setQuantity(1);
-      setBuyingPrice("");
       setLineItems([]);
       setPaidAmount("");
+      setPurchaseNote("");
       toast({
         title: "Purchase recorded successfully",
       });
@@ -259,9 +270,10 @@ export default function PurchasesList() {
   });
 
   const handleAddLineItem = () => {
-    if (!selectedProduct || quantity <= 0 || !buyingPrice) {
+    if (!selectedProduct || quantity <= 0) {
       toast({
-        title: "Invalid product, quantity, or price",
+        title: "Invalid selection",
+        description: "Product and quantity are required",
         variant: "destructive",
       });
       return;
@@ -270,8 +282,11 @@ export default function PurchasesList() {
     const product = products.find((p) => p._id === selectedProduct);
     if (!product) return;
 
-    const buyingPriceTaka = parseFloat(buyingPrice);
-    const buyingPricePaisa = Math.round(buyingPriceTaka * 100);
+    const buyingPrice = parseFloat(product.buying_price_taka ?? "0") || 0;
+    const sellingPrice = parseFloat(product.selling_price_taka ?? "0") || 0;
+
+    const sellingPricePaisa = Math.round(sellingPrice * 100);
+    const buyingPricePaisa = Math.round(buyingPrice * 100);
 
     setLineItems([
       ...lineItems,
@@ -280,13 +295,13 @@ export default function PurchasesList() {
         product_code: product.product_code,
         product_name: product.name,
         qty: quantity,
+        selling_price_paisa: sellingPricePaisa,
         buying_price_paisa: buyingPricePaisa,
       },
     ]);
 
     setSelectedProduct("");
     setQuantity(1);
-    setBuyingPrice("");
     setProductSearch("");
     setProductPopoverOpen(false);
   };
@@ -352,7 +367,7 @@ export default function PurchasesList() {
     const headers = ["Purchase No", "Date", "Products", "Net Amount", "Paid", "Due"];
     const rows = purchases.map((p) => [
       p.purchase_number,
-      new Date(p.date).toLocaleDateString(),
+      formatDate(p.date),
       p.lines.map((l) => `${l.product_name} (${l.qty})`).join(", "),
       toPriceNumber(p.net_amount_paisa).toFixed(2),
       toPriceNumber(p.paid_amount_paisa).toFixed(2),
@@ -381,7 +396,7 @@ export default function PurchasesList() {
     try {
       const data = purchases.map((p) => ({
         "Purchase No": p.purchase_number,
-        Date: new Date(p.date).toLocaleDateString(),
+        Date: formatDate(p.date),
         Items: p.lines.length,
         "Net Amount (Taka)": toPriceNumber(p.net_amount_paisa).toFixed(2),
         "Paid (Taka)": toPriceNumber(p.paid_amount_paisa).toFixed(2),
@@ -449,15 +464,15 @@ export default function PurchasesList() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
         <StatCard
           label="Total Purchases"
-          value={formatCurrency(totalNet)}
-          trend={{ value: `${totalPurchases} purchases · ${periodLabel}`, positive: true }}
+          value={String(totalPurchases)}
+          trend={{ value: `${periodLabel}`, positive: true }}
           icon={Truck}
           iconColor="text-primary"
           iconBg="bg-primary/10"
         />
         <StatCard
-          label="Total Paid"
-          value={formatCurrency(totalPaid)}
+          label="Total Spent"
+          value={formatCurrency(totalNet)}
           trend={{ value: periodLabel, positive: true }}
           icon={DollarSign}
           iconColor="text-success"
@@ -496,7 +511,7 @@ export default function PurchasesList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                {["Purchase No", "Date", "Products", "Net Amount", "Paid", "Due", "Actions"].map((h) => (
+                {["Purchase No", "Supplier", "Product", "Category", "Net Amount", "Paid", "Due", "Actions"].map((h) => (
                   <th key={h} className="text-left text-table-header uppercase text-muted-foreground px-4 py-3">
                     {h}
                   </th>
@@ -527,7 +542,14 @@ export default function PurchasesList() {
                     className={`border-b border-border last:border-0 hover:bg-row-hover transition-colors ${i % 2 === 1 ? "bg-muted/20" : ""}`}
                   >
                     <td className="px-4 py-3 text-table-body font-medium text-secondary">{p.purchase_number}</td>
-                    <td className="px-4 py-3 text-table-body text-muted-foreground">{new Date(p.date).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table-body text-foreground">{p.party_name ?? '—'}</td>
+                    <td className="px-4 py-3 text-sm text-table-body">
+                      {p.lines && p.lines.length > 0
+                        ? p.lines.length === 1
+                          ? p.lines[0].product_name
+                          : `${p.lines[0].product_name} +${p.lines.length - 1} more`
+                        : '—'}
+                    </td>
                     <td className="px-4 py-3 text-table-body text-card-foreground max-w-xs">
                       <div className="flex flex-wrap gap-1">
                         {p.lines.slice(0, 2).map((l, idx) => (
@@ -604,7 +626,7 @@ export default function PurchasesList() {
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="font-semibold text-sm text-secondary">{p.purchase_number}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(p.date).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(p.date)}</p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mb-2">
@@ -665,6 +687,16 @@ export default function PurchasesList() {
               />
             </div>
 
+            {/* Supplier / Party Name */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Supplier / Party Name *</label>
+              <Input
+                value={partyName}
+                onChange={(e) => setPartyName(e.target.value)}
+                placeholder="Enter supplier name"
+              />
+            </div>
+
             {/* Add Products */}
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-3">Add Products</h3>
@@ -720,7 +752,7 @@ export default function PurchasesList() {
               </div>
 
               <div className="space-y-2 mb-3">
-                <label className="text-sm font-medium">Quantity</label>
+                <label className="text-sm font-medium">Quantity (pcs) *</label>
                 <Input
                   type="number"
                   min="1"
@@ -729,23 +761,40 @@ export default function PurchasesList() {
                 />
               </div>
 
-              <div className="space-y-2 mb-3">
-                <label className="text-sm font-medium">Buying Price (Taka)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Enter buying price per unit"
-                  value={buyingPrice}
-                  onChange={(e) => setBuyingPrice(e.target.value)}
-                />
-              </div>
+              {selectedProduct && (() => {
+                const product = products.find(p => p._id === selectedProduct);
+                if (!product) return null;
+
+                const buyingPrice = parseFloat(product.buying_price_taka ?? "0") || 0;
+                const sellingPrice = parseFloat(product.selling_price_taka ?? "0") || 0;
+
+                return (
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">
+                      <span className="text-sm text-muted-foreground">Buying Price (from inventory)</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {formatCurrency(buyingPrice)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">
+                      <span className="text-sm text-muted-foreground">Selling Price (from inventory)</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {formatCurrency(sellingPrice)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Line Total Preview */}
-              {(() => {
+              {selectedProduct && (() => {
+                const product = products.find(p => p._id === selectedProduct);
+                if (!product) return null;
+
+                const buyingPrice = parseFloat(product.buying_price_taka ?? "0") || 0;
                 const qty = parseFloat(String(quantity)) || 0;
-                const price = parseFloat(buyingPrice) || 0;
-                const lineTotal = qty * price;
+                const lineTotal = qty * buyingPrice;
+
                 return lineTotal > 0 ? (
                   <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border mb-3">
                     <span className="text-sm text-muted-foreground">Line Total</span>
@@ -820,6 +869,15 @@ export default function PurchasesList() {
                   />
                   <p className="text-xs text-muted-foreground">Leave empty to record full as due</p>
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Note (Optional)</label>
+                  <Input
+                    value={purchaseNote}
+                    onChange={(e) => setPurchaseNote(e.target.value)}
+                    placeholder="Add any purchase notes..."
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -833,7 +891,7 @@ export default function PurchasesList() {
             </Button>
             <Button
               onClick={() => createPurchaseMutation.mutate()}
-              disabled={createPurchaseMutation.isPending || lineItems.length === 0}
+              disabled={createPurchaseMutation.isPending || !partyName.trim() || lineItems.length === 0}
             >
               {createPurchaseMutation.isPending ? "Recording..." : "Record Purchase"}
             </Button>

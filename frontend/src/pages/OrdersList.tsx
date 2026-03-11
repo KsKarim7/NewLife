@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
-import { formatDateTime } from "@/utils/formatDate";
+import { formatDate, formatDateTime } from "@/utils/formatDate";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -411,19 +411,7 @@ export default function OrdersList() {
     const fmtLine = (val: string | number) =>
       `Tk ${Math.max(0, toPriceNumber(val)).toFixed(2)}`;
 
-    const d = new Date(order.createdAt);
-    const datePart = d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-    });
-    const timePart = d.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-    const dateStr = `${datePart} | ${timePart}`;
-
+    const dateStr = formatDateTime(order.createdAt);
     const year = new Date(order.createdAt).getFullYear();
     const num = order.order_number.replace("ORD-", "").padStart(4, "0");
 
@@ -658,7 +646,7 @@ export default function OrdersList() {
                 filteredOrders.map((o, i) => (
                   <tr key={o._id} className={`border-b border-border last:border-0 hover:bg-row-hover transition-colors ${i % 2 === 1 ? 'bg-muted/20' : ''}`}>
                     <td className="px-4 py-3 text-table-body font-medium text-secondary">{o.order_number}</td>
-                    <td className="px-4 py-3 text-table-body text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table-body text-muted-foreground">{formatDate(o.createdAt)}</td>
                     <td className="px-4 py-3 text-table-body text-card-foreground">{o.customer.name}</td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">{o.lines.length}</td>
                     <td className="px-4 py-3 text-table-body font-medium">{formatCurrency(toPriceNumber(o.total_paisa))}</td>
@@ -728,7 +716,7 @@ export default function OrdersList() {
                   <p className="font-semibold text-sm text-secondary">{o.order_number}</p>
                   <p className="text-xs text-muted-foreground">{o.customer.name}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</p>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

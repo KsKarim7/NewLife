@@ -4,6 +4,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
+import { formatDate } from "@/utils/formatDate";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -230,7 +231,7 @@ export default function SalesReturnsList() {
     const headers = ["Return No", "Date", "Customer", "Order Ref", "Items", "Qty", "Notes"];
     const rows = filteredReturns.map(r => [
       r.return_number,
-      new Date(r.return_date).toLocaleDateString(),
+      formatDate(r.return_date),
       r.customer.name,
       r.original_order_ref || "-",
       r.lines.map(l => l.product_name).join(", "),
@@ -260,7 +261,7 @@ export default function SalesReturnsList() {
     try {
       const data = filteredReturns.map(r => ({
         "Return No": r.return_number,
-        "Date": new Date(r.return_date).toLocaleDateString(),
+        "Date": formatDate(r.return_date),
         "Customer": r.customer.name,
         "Phone": r.customer.phone || "-",
         "Order Ref": r.original_order_ref || "-",
@@ -380,7 +381,7 @@ export default function SalesReturnsList() {
                 filteredReturns.map((r, i) => (
                   <tr key={r._id} className={`border-b border-border last:border-0 hover:bg-row-hover transition-colors ${i % 2 === 1 ? 'bg-muted/20' : ''}`}>
                     <td className="px-4 py-3 text-table-body font-medium text-secondary">{r.return_number}</td>
-                    <td className="px-4 py-3 text-table-body text-muted-foreground">{new Date(r.return_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-table-body text-muted-foreground">{formatDate(r.return_date)}</td>
                     <td className="px-4 py-3 text-table-body text-card-foreground">{r.customer.name}</td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">{r.lines.map(l => l.product_name).join(", ")}</td>
                     <td className="px-4 py-3 text-table-body">{r.lines.reduce((sum, l) => sum + l.qty, 0)}</td>
@@ -414,7 +415,7 @@ export default function SalesReturnsList() {
                   <p className="font-semibold text-sm text-secondary">{r.return_number}</p>
                   <p className="text-xs text-muted-foreground">{r.customer.name}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{new Date(r.return_date).toLocaleDateString()}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(r.return_date)}</p>
               </div>
               <p className="text-xs text-muted-foreground truncate mb-2">
                 {r.lines.map(l => l.product_name).join(", ")} (x{r.lines.reduce((sum, l) => sum + l.qty, 0)})

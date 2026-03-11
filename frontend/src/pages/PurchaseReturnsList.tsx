@@ -6,6 +6,8 @@ import { StatCard } from "@/components/shared/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { formatCurrency } from "@/utils/currency";
+import { formatDate } from "@/utils/formatDate";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Package, Plus, FileText, FileSpreadsheet, X, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -227,7 +229,7 @@ export default function PurchaseReturnsList() {
     const rows = filteredReturns.map(r => [
       r.return_number,
       r.purchase_number,
-      new Date(r.date).toLocaleDateString(),
+      formatDate(r.date),
       r.lines.map(l => l.product_name).join(", "),
       r.lines.reduce((sum, l) => sum + l.qty, 0),
     ]);
@@ -305,7 +307,7 @@ export default function PurchaseReturnsList() {
                   <tr key={r._id} className={`border-b border-border last:border-0 hover:bg-row-hover transition-colors ${i % 2 === 1 ? 'bg-muted/20' : ''}`}>
                     <td className="px-4 py-3 text-table-body font-medium text-secondary">{r.return_number}</td>
                     <td className="px-4 py-3 text-table-body">{r.purchase_number}</td>
-                    <td className="px-4 py-3 text-table-body text-muted-foreground">{new Date(r.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-table-body text-muted-foreground">{formatDate(r.date)}</td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">{r.lines.length}</td>
                     <td className="px-4 py-3 text-table-body">{r.lines.reduce((sum, l) => sum + l.qty, 0)}</td>
                     <td className="px-4 py-3 text-table-body text-secondary hover:underline cursor-pointer">View</td>
@@ -331,7 +333,7 @@ export default function PurchaseReturnsList() {
             <div key={r._id} className="bg-card rounded-xl p-4 shadow-sm border border-border">
               <div className="flex items-start justify-between mb-1">
                 <p className="font-semibold text-sm text-secondary">{r.return_number}</p>
-                <p className="text-xs text-muted-foreground">{new Date(r.date).toLocaleDateString()}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(r.date)}</p>
               </div>
               <p className="text-xs text-muted-foreground truncate mb-2">Ref: {r.purchase_number}</p>
               <p className="font-bold text-sm">{r.lines.reduce((sum, l) => sum + l.qty, 0)} units</p>

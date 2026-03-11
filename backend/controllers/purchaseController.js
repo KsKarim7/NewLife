@@ -86,7 +86,7 @@ exports.getAllPurchases = async (req, res) => {
   const total = await Purchase.countDocuments(filter);
 
   const purchases = await Purchase.find(filter)
-    .sort({ date: -1 })
+    .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(limit);
 
@@ -155,7 +155,14 @@ exports.getPurchaseById = async (req, res) => {
 };
 
 exports.createPurchase = async (req, res) => {
-  const { date, lines, paid_amount } = req.body;
+  const { date, lines, paid_amount, party_name, note } = req.body;
+
+  if (!party_name || party_name.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      message: 'Supplier/Party name is required',
+    });
+  }
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return res.status(400).json({
@@ -182,7 +189,7 @@ exports.createPurchase = async (req, res) => {
     let net_amount_paisa = 0;
 
     for (const line of lines) {
-      const { product_id, qty, buying_price } = line;
+      const { product_id, qty, selling_price_paisa, buying_price_paisa } = line;
       const quantity = Number(qty);
 
       if (!Number.isFinite(quantity) || quantity <= 0) {
@@ -214,14 +221,15 @@ exports.createPurchase = async (req, res) => {
         });
       }
 
-      const buying_price_paisa = Math.round(
-        parseFloat(buying_price) * 100
-      );
-      const line_total_paisa = buying_price_paisa * quantity;
+      const buyingPricePaisa = Math.round(parseFloat(buying_price_paisa) || 0);
+      const sellingPricePaisa = Math.round(parseFloat(selling_price_paisa) || 0);
+      const line_total_paisa = buyingPricePaisa * quantity;
 
       net_amount_paisa += line_total_paisa;
 
       product.on_hand = (product.on_hand || 0) + quantity;
+      product.selling_price_paisa = sellingPricePaisa;
+      product.buying_price_paisa = buyingPricePaisa;
       await product.save({ session: useTransaction ? session : undefined });
 
       const movement_id = await Counter.nextVal('movements', useTransaction ? session : undefined);
@@ -235,7 +243,7 @@ exports.createPurchase = async (req, res) => {
             product_name: product.name,
             qty: quantity,
             type: 'purchase_in',
-            unit_cost_paisa: buying_price_paisa,
+            unit_cost_paisa: buyingPricePaisa,
             source: {
               doc_type: 'purchase',
               doc_number: purchase_number,
@@ -253,7 +261,8 @@ exports.createPurchase = async (req, res) => {
         product_code: product.product_code,
         product_name: product.name,
         qty: quantity,
-        buying_price_paisa,
+        selling_price_paisa: sellingPricePaisa,
+        buying_price_paisa: buyingPricePaisa,
         line_total_paisa,
       });
     }
@@ -293,8 +302,10 @@ exports.createPurchase = async (req, res) => {
       [
         {
           purchase_number,
+          party_name,
           date: date ? new Date(date) : undefined,
           lines: purchaseLines,
+          note: note || '',
           net_amount_paisa,
           paid_amount_paisa,
           due_amount_paisa,

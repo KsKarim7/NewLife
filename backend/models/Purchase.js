@@ -7,6 +7,7 @@ const purchaseLineSchema = new mongoose.Schema(
     product_code: { type: String },
     product_name: { type: String },
     qty: { type: Number },
+    selling_price_paisa: { type: mongoose.Schema.Types.Long },
     buying_price_paisa: { type: mongoose.Schema.Types.Long },
     line_total_paisa: { type: mongoose.Schema.Types.Long },
   },
@@ -19,12 +20,20 @@ const purchaseSchema = new mongoose.Schema(
       type: String,
       unique: true,
     },
+    party_name: {
+      type: String,
+      required: true,
+    },
     date: {
       type: Date,
       required: true,
       default: Date.now,
     },
     lines: [purchaseLineSchema],
+    note: {
+      type: String,
+      default: '',
+    },
     net_amount_paisa: { type: mongoose.Schema.Types.Long },
     paid_amount_paisa: { type: mongoose.Schema.Types.Long },
     due_amount_paisa: { type: mongoose.Schema.Types.Long },
