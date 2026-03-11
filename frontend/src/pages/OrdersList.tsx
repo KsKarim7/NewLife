@@ -66,6 +66,7 @@ import {
   printViaUSB,
   printViaBluetooth,
   printViaWindowPrint,
+  printA4Receipt,
   buildReceiptLines,
   buildReceiptText,
   type ReceiptData,
@@ -1291,6 +1292,28 @@ export default function OrdersList() {
               <div>
                 <p className="text-sm font-medium">System Print Dialog</p>
                 <p className="text-xs text-muted-foreground">Works in any browser</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!printTargetOrder) return;
+                setShowPrintDialog(false);
+                setPrintTargetOrder(null);
+                printA4Receipt(
+                  printTargetOrder,
+                  settingsData?.store_info?.store_name ?? "New Life, New Market",
+                  settingsData?.store_info?.physical_address ?? "New Market, Dhaka",
+                  settingsData?.store_info?.phone_number ?? ""
+                );
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-border hover:bg-muted transition-colors text-left"
+            >
+              <span className="text-xl">📄</span>
+              <div>
+                <p className="text-sm font-medium">Print A4</p>
+                <p className="text-xs text-muted-foreground">Full-page A4 receipt — formatted for standard paper</p>
               </div>
             </button>
           </div>
