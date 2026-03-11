@@ -654,7 +654,12 @@ export default function OrdersList() {
                     <td className="px-4 py-3 text-table-body text-destructive font-medium">
                       {toPriceNumber(o.amount_due_paisa) > 0 ? formatCurrency(toPriceNumber(o.amount_due_paisa)) : "—"}
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={orderStatusToStatusType(o.status)} /></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <StatusBadge status={orderStatusToStatusType(o.status)} />
+                        {o.has_return && <StatusBadge status="returned" />}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-table-body">
                       <div className="flex items-center gap-1">
                         <Button
@@ -733,7 +738,10 @@ export default function OrdersList() {
                   >
                     <Eye className="h-3 w-3" />
                   </Button>
-                  <StatusBadge status={orderStatusToStatusType(o.status)} />
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <StatusBadge status={orderStatusToStatusType(o.status)} />
+                    {o.has_return && <StatusBadge status="returned" />}
+                  </div>
                 </div>
               </div>
             </div>

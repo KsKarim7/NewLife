@@ -34,6 +34,7 @@ export interface Order {
   }>;
   createdAt: string;
   updatedAt: string;
+  has_return?: boolean;
 }
 
 export interface OrdersResponse {
@@ -93,6 +94,7 @@ const normalizeOrder = (item: Partial<Order> & Record<string, unknown>): Order =
     payments: item.payments,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    has_return: item.has_return === true,
   };
 };
 

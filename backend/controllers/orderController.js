@@ -5,6 +5,7 @@ const InventoryTransaction = require('../models/InventoryTransaction');
 const Customer = require('../models/Customer');
 const Counter = require('../models/Counter');
 const Settings = require('../models/Settings');
+const SalesReturn = require('../models/SalesReturn');
 const { toLocalStartOfDay, toLocalEndOfDay } = require('../utils/dateUtils');
 
 const paisaToTakaString = (value) => {
@@ -115,6 +116,17 @@ exports.getAllOrders = async (req, res) => {
     convertOrderMoney(doc.toObject({ virtuals: true }))
   );
 
+  // Mark orders that have a sales return recorded against them
+  const orderNumbers = transformed.map((o) => o.order_number);
+  const returnedOrderNumbers = await SalesReturn.distinct('original_order_ref', {
+    original_order_ref: { $in: orderNumbers },
+  });
+  const returnedSet = new Set(returnedOrderNumbers);
+  const ordersWithReturnFlag = transformed.map((o) => ({
+    ...o,
+    has_return: returnedSet.has(o.order_number),
+  }));
+
   // Build summary match with same date filter as list, but exclude Cancelled
   const summaryMatch = { is_deleted: false, status: { $ne: 'Cancelled' } };
 
@@ -175,7 +187,7 @@ exports.getAllOrders = async (req, res) => {
   return res.json({
     success: true,
     data: {
-      orders: transformed,
+      orders: ordersWithReturnFlag,
       pagination: buildPagination(total, page, limit),
       summary: {
         total_revenue: paisaToTakaString(summaryData.total_revenue_paisa),

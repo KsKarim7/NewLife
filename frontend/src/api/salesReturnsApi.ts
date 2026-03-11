@@ -92,6 +92,7 @@ export const getSalesReturns = async (
   return {
     returns: salesReturns,
     pagination: response.data.data.pagination,
+    summary: response.data.data.summary,
   };
 };
 
