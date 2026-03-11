@@ -295,7 +295,6 @@ exports.createSalesReturn = async (req, res) => {
         const previousReturnsQuery = SalesReturn.find({
           original_order_ref,
           'lines.product_id': new mongoose.Types.ObjectId(product_id),
-          is_deleted: false,
         });
         if (useTransaction) previousReturnsQuery.session(session);
         const previousReturns = await previousReturnsQuery;
@@ -323,14 +322,28 @@ exports.createSalesReturn = async (req, res) => {
     }
 
     // All validations passed, now process inventory
+    let total_refund_paisa = 0;
+
     for (const line of lines) {
       const { product_id, qty } = line;
       const quantity = Number(qty);
 
       const product = productsMap[product_id.toString()];
-
-      product.on_hand = (product.on_hand || 0) + quantity;
+      const beforeQty = product.on_hand || 0;
+      const afterQty = beforeQty + quantity;
+      product.on_hand = afterQty;
       await product.save({ session: useTransaction ? session : undefined });
+
+      // Compute refund for this line (from order line unit price if order exists)
+      let lineRefundPaisa = 0;
+      if (originalOrder) {
+        const orderLine = originalOrder.lines.find(l => l.product_id.toString() === product_id.toString());
+        if (orderLine) {
+          const unitPaisa = Number(orderLine.unit_price_paisa || 0);
+          lineRefundPaisa = Math.round(unitPaisa * quantity);
+        }
+      }
+      total_refund_paisa += lineRefundPaisa;
 
       const movement_id = await Counter.nextVal('movements', useTransaction ? session : undefined);
 
@@ -343,6 +356,9 @@ exports.createSalesReturn = async (req, res) => {
             product_name: product.name,
             qty: quantity,
             type: 'sale_return',
+            before_qty: beforeQty,
+            after_qty: afterQty,
+            note: `Sales Return: ${return_number}`,
             source: {
               doc_type: 'sales_return',
               doc_number: return_number,
@@ -375,10 +391,25 @@ exports.createSalesReturn = async (req, res) => {
           inventory_movements: movementIds,
           createdBy: req.user ? req.user._id : undefined,
           accounting_date,
+          total_refund_paisa,
         },
       ],
       useTransaction ? { session } : {}
     );
+
+    // Update original order if we have one and refund > 0
+    if (originalOrder && total_refund_paisa > 0) {
+      const newReceived = Math.max(0, Number(originalOrder.amount_received_paisa || 0) - total_refund_paisa);
+      const newDue = Math.max(0, Number(originalOrder.total_paisa || 0) - newReceived);
+      originalOrder.amount_received_paisa = newReceived;
+      originalOrder.amount_due_paisa = newDue;
+      if (newDue <= 0) {
+        originalOrder.status = 'Paid';
+      } else if (newReceived > 0) {
+        originalOrder.status = 'Partially Paid';
+      }
+      await originalOrder.save({ session: useTransaction ? session : undefined });
+    }
 
     if (useTransaction) {
       await session.commitTransaction();

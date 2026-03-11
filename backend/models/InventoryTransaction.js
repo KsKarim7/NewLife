@@ -30,8 +30,12 @@ const inventoryTransactionSchema = new mongoose.Schema(
         'purchase_return',
         'sale_return',
         'adjustment',
+        'cancel',
       ],
     },
+    before_qty: { type: Number },
+    after_qty: { type: Number },
+    note: { type: String },
     unit_cost_paisa: {
       type: mongoose.Schema.Types.Long,
     },

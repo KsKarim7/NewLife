@@ -383,15 +383,19 @@ exports.createOrder = async (req, res) => {
         line_total_paisa: lineTotalPaisa,
       });
 
-      product.on_hand = (product.on_hand || 0) - quantity;
+      const beforeQty = product.on_hand || 0;
+      product.on_hand = beforeQty - quantity;
       await product.save({ session: useTransaction ? session : undefined });
+
+      orderLines[orderLines.length - 1]._beforeQty = beforeQty;
+      orderLines[orderLines.length - 1]._afterQty = beforeQty - quantity;
     }
 
     const total_paisa = subtotal_paisa + vat_total_paisa;
     const amount_received_paisa = Math.round(
       parseFloat(amount_received || '0') * 100
     );
-    const amount_due_paisa = total_paisa - amount_received_paisa;
+    const amount_due_paisa = Math.max(0, total_paisa - amount_received_paisa);
 
     let status = 'Confirmed';
     if (amount_received_paisa >= total_paisa && total_paisa > 0) {
@@ -479,6 +483,9 @@ exports.createOrder = async (req, res) => {
             product_name: line.product_name,
             qty: -line.qty,
             type: 'sale_out',
+            before_qty: line._beforeQty,
+            after_qty: line._afterQty,
+            note: `Order: ${order_number}`,
             source: {
               doc_type: 'order',
               doc_number: order_number,
@@ -532,6 +539,14 @@ exports.addPayment = async (req, res) => {
       .json({ success: false, message: 'Order not found' });
   }
 
+  const currentDue = Number(order.amount_due_paisa || 0);
+  if (currentDue > 0 && paymentPaisa > currentDue) {
+    return res.status(400).json({
+      success: false,
+      message: 'Payment amount exceeds due amount',
+    });
+  }
+
   order.payments.push({
     amount_paisa: paymentPaisa,
     date: new Date(),
@@ -544,8 +559,7 @@ exports.addPayment = async (req, res) => {
   );
 
   order.amount_received_paisa = totalReceived;
-  order.amount_due_paisa =
-    Number(order.total_paisa || 0) - totalReceived;
+  order.amount_due_paisa = Math.max(0, Number(order.total_paisa || 0) - totalReceived);
 
   if (order.amount_due_paisa <= 0) {
     order.status = 'Paid';
@@ -626,7 +640,9 @@ exports.cancelOrder = async (req, res) => {
         });
       }
 
-      product.on_hand = (product.on_hand || 0) + line.qty;
+      const beforeQty = product.on_hand || 0;
+      const afterQty = beforeQty + line.qty;
+      product.on_hand = afterQty;
       await product.save({ session: useTransaction ? session : undefined });
 
       const movement_id = await Counter.nextVal('movements', useTransaction ? session : undefined);
@@ -639,7 +655,10 @@ exports.cancelOrder = async (req, res) => {
             product_code: product.product_code,
             product_name: product.name,
             qty: line.qty,
-            type: 'adjustment',
+            type: 'cancel',
+            before_qty: beforeQty,
+            after_qty: afterQty,
+            note: `Order Cancelled: ${order.order_number}`,
             source: {
               doc_type: 'order_cancel',
               doc_number: order.order_number,

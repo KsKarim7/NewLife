@@ -82,8 +82,8 @@ exports.getTransactions = async (req, res) => {
         doc_type: doc.source?.doc_type,
         doc_number: doc.source?.doc_number,
       },
-      before_qty: undefined,
-      after_qty: undefined,
+      before_qty: doc.before_qty,
+      after_qty: doc.after_qty,
       done_by: doneBy,
       occurred_at: doc.createdAt,
     };

@@ -30,6 +30,8 @@ function mapTypeToLabel(type: StockMovementType | undefined): string {
       return "Sales Return";
     case "adjustment":
       return "Manual Adjustment";
+    case "cancel":
+      return "Cancel";
     default:
       return "Unknown";
   }

@@ -227,7 +227,9 @@ exports.createPurchase = async (req, res) => {
 
       net_amount_paisa += line_total_paisa;
 
-      product.on_hand = (product.on_hand || 0) + quantity;
+      const beforeQty = product.on_hand || 0;
+      const afterQty = beforeQty + quantity;
+      product.on_hand = afterQty;
       product.selling_price_paisa = sellingPricePaisa;
       product.buying_price_paisa = buyingPricePaisa;
       await product.save({ session: useTransaction ? session : undefined });
@@ -244,6 +246,9 @@ exports.createPurchase = async (req, res) => {
             qty: quantity,
             type: 'purchase_in',
             unit_cost_paisa: buyingPricePaisa,
+            before_qty: beforeQty,
+            after_qty: afterQty,
+            note: `Purchase: ${purchase_number}`,
             source: {
               doc_type: 'purchase',
               doc_number: purchase_number,
@@ -270,7 +275,7 @@ exports.createPurchase = async (req, res) => {
     const paid_amount_paisa = Math.round(
       parseFloat(paid_amount || '0') * 100
     );
-    const due_amount_paisa = net_amount_paisa - paid_amount_paisa;
+    const due_amount_paisa = Math.max(0, net_amount_paisa - paid_amount_paisa);
 
     // Determine accounting date if next day mode is enabled
     let accounting_date;
@@ -370,7 +375,7 @@ exports.addPayment = async (req, res) => {
   }
 
   purchase.paid_amount_paisa = Number(purchase.paid_amount_paisa || 0) + paymentPaisa;
-  purchase.due_amount_paisa = Number(purchase.net_amount_paisa || 0) - purchase.paid_amount_paisa;
+  purchase.due_amount_paisa = Math.max(0, Number(purchase.net_amount_paisa || 0) - purchase.paid_amount_paisa);
 
   if (purchase.due_amount_paisa <= 0) {
     purchase.status = 'Paid';
@@ -451,7 +456,21 @@ exports.cancelPurchase = async (req, res) => {
         });
       }
 
-      product.on_hand = (product.on_hand || 0) - line.qty;
+      const beforeQty = product.on_hand || 0;
+
+      if (beforeQty < line.qty) {
+        if (useTransaction) {
+          await session.abortTransaction();
+        }
+        session.endSession();
+        return res.status(409).json({
+          success: false,
+          message: `Insufficient stock to reverse purchase for ${product.name}`,
+        });
+      }
+
+      const afterQty = beforeQty - line.qty;
+      product.on_hand = afterQty;
       await product.save({ session: useTransaction ? session : undefined });
 
       const movement_id = await Counter.nextVal('movements', useTransaction ? session : undefined);
@@ -463,8 +482,11 @@ exports.cancelPurchase = async (req, res) => {
             product_id: product._id,
             product_code: product.product_code,
             product_name: product.name,
-            qty: line.qty,
-            type: 'adjustment',
+            qty: -line.qty,
+            type: 'cancel',
+            before_qty: beforeQty,
+            after_qty: afterQty,
+            note: `Purchase Cancelled: ${purchase.purchase_number}`,
             source: {
               doc_type: 'purchase_cancel',
               doc_number: purchase.purchase_number,

@@ -253,6 +253,7 @@ exports.createPurchaseReturn = async (req, res) => {
     // All validations passed, now process inventory
     const returnLines = [];
     const movementIds = [];
+    let total_return_paisa = 0;
 
     const return_number = await Counter.nextVal('purchase_returns', useTransaction ? session : undefined);
 
@@ -279,9 +280,9 @@ exports.createPurchaseReturn = async (req, res) => {
       const quantity = Number(qty);
 
       const product = productsMap[product_id.toString()];
+      const beforeQty = product.on_hand || 0;
 
-      product.on_hand = (product.on_hand || 0) - quantity;
-      if (product.on_hand < 0) {
+      if (beforeQty < quantity) {
         if (useTransaction) {
           await session.abortTransaction();
         }
@@ -292,6 +293,14 @@ exports.createPurchaseReturn = async (req, res) => {
         });
       }
 
+      const purchaseLine = originalPurchase.lines.find(l => l.product_id.toString() === product_id.toString());
+      const lineReturnPaisa = purchaseLine
+        ? Math.round(Number(purchaseLine.line_total_paisa || 0) * (quantity / purchaseLine.qty))
+        : 0;
+      total_return_paisa += lineReturnPaisa;
+
+      const afterQty = beforeQty - quantity;
+      product.on_hand = afterQty;
       await product.save({ session: useTransaction ? session : undefined });
 
       const movement_id = await Counter.nextVal('movements', useTransaction ? session : undefined);
@@ -305,6 +314,9 @@ exports.createPurchaseReturn = async (req, res) => {
             product_name: product.name,
             qty: -quantity,
             type: 'purchase_return',
+            before_qty: beforeQty,
+            after_qty: afterQty,
+            note: `Purchase Return: ${return_number}`,
             source: {
               doc_type: 'purchase_return',
               doc_number: return_number,
@@ -335,10 +347,22 @@ exports.createPurchaseReturn = async (req, res) => {
           inventory_movements: movementIds,
           createdBy: req.user ? req.user._id : undefined,
           accounting_date,
+          total_return_paisa,
         },
       ],
       useTransaction ? { session } : {}
     );
+
+    // Update original purchase: reduce net_amount_paisa, recalc due_amount_paisa
+    const newNet = Math.max(0, Number(originalPurchase.net_amount_paisa || 0) - total_return_paisa);
+    originalPurchase.net_amount_paisa = newNet;
+    originalPurchase.due_amount_paisa = Math.max(0, newNet - Number(originalPurchase.paid_amount_paisa || 0));
+    if (originalPurchase.due_amount_paisa <= 0) {
+      originalPurchase.status = 'Paid';
+    } else if (Number(originalPurchase.paid_amount_paisa || 0) > 0) {
+      originalPurchase.status = 'Partially Paid';
+    }
+    await originalPurchase.save({ session: useTransaction ? session : undefined });
 
     if (useTransaction) {
       await session.commitTransaction();

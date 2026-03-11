@@ -38,6 +38,10 @@ const purchaseReturnSchema = new mongoose.Schema(
       type: Date,
       default: undefined,
     },
+    total_return_paisa: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
