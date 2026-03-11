@@ -370,8 +370,8 @@ export default function PurchasesList() {
       const allData = await getPurchases({
         page: 1,
         limit: 9999,
-        from: fromDate || undefined,
-        to: toDate || undefined,
+        from: queryFrom || undefined,
+        to: queryTo || undefined,
       });
       const allPurchases = allData.purchases ?? [];
 
