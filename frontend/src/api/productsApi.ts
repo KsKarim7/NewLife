@@ -38,15 +38,21 @@ export interface ProductsResponse {
   };
 }
 
+const toNum = (v: unknown): number => {
+  if (typeof v === "number" && !Number.isNaN(v)) return v;
+  const n = parseFloat(String(v));
+  return Number.isNaN(n) ? 0 : n;
+};
+
 const normalizeProduct = (item: Partial<Product> & Record<string, unknown>): Product => {
   // Handle selling price - be defensive about multiple formats
   // The backend stores prices in paisa, converts to taka string for transmission
   let selling = "0";
 
   // Try to find selling price in order of preference
-  if (item.selling_price_taka && item.selling_price_taka > 0) {
+  if (toNum(item.selling_price_taka) > 0) {
     selling = String(item.selling_price_taka);
-  } else if (item.selling_price && item.selling_price > 0) {
+  } else if (toNum(item.selling_price) > 0) {
     selling = String(item.selling_price);
   } else if (item.selling_price_paisa !== undefined && item.selling_price_paisa !== null) {
     const val = item.selling_price_paisa;
@@ -64,9 +70,9 @@ const normalizeProduct = (item: Partial<Product> & Record<string, unknown>): Pro
   // Same for buying price
   let buying = "0";
 
-  if (item.buying_price_taka && item.buying_price_taka > 0) {
+  if (toNum(item.buying_price_taka) > 0) {
     buying = String(item.buying_price_taka);
-  } else if (item.buying_price && item.buying_price > 0) {
+  } else if (toNum(item.buying_price) > 0) {
     buying = String(item.buying_price);
   } else if (item.buying_price_paisa !== undefined && item.buying_price_paisa !== null) {
     const val = item.buying_price_paisa;
@@ -82,19 +88,25 @@ const normalizeProduct = (item: Partial<Product> & Record<string, unknown>): Pro
   }
 
   // Handle category from populated category_id or category field
-  const category = item.category ?? item.category_id ?? null;
-  const categoryName = item.category_name ?? category?.name ?? "";
+  const rawCategory = item.category ?? item.category_id ?? null;
+  const categoryObj = rawCategory && typeof rawCategory === "object" && rawCategory !== null
+    ? rawCategory as Record<string, unknown>
+    : null;
+  const category: ProductCategoryRef | null = categoryObj && typeof categoryObj._id === "string" && typeof categoryObj.name === "string"
+    ? { _id: categoryObj._id, name: categoryObj.name }
+    : null;
+  const categoryName = (item.category_name as string) ?? (category?.name ?? "");
 
   return {
-    _id: item._id,
-    name: item.name,
-    product_code: item.product_code ?? item.code ?? "",
-    category: category,
+    _id: String(item._id ?? ""),
+    name: String(item.name ?? ""),
+    product_code: String(item.product_code ?? item.code ?? ""),
+    category,
     category_name: categoryName,
-    unit: item.unit ?? "",
+    unit: String(item.unit ?? ""),
     selling_price_taka: String(selling),
     buying_price_taka: String(buying),
-    stock_qty: item.stock_qty ?? item.stock ?? item.on_hand ?? 0,
+    stock_qty: toNum(item.stock_qty ?? item.stock ?? item.on_hand),
     vat_enabled: item.vat_enabled,
     vat_percent: item.vat_percent,
     description: item.description,

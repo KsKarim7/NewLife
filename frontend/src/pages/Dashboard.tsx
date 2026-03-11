@@ -69,15 +69,6 @@ export default function Dashboard() {
 
   const statsLoading = isLoading;
 
-  const handlePeriodChange = (value: string) => {
-    let next = "7d";
-    if (value === "today") next = "today";
-    else if (value === "30") next = "30d";
-    else if (value === "month") next = "month";
-    else if (value === "custom") next = "custom";
-    setPeriod(next);
-  };
-
   const todaysSales = data?.todays_sales_taka
     ? formatCurrency(parseFloat(data.todays_sales_taka))
     : formatCurrency(0);
@@ -86,8 +77,6 @@ export default function Dashboard() {
     <PageLayout
       title="Dashboard"
       searchPlaceholder="Search products, orders, customers..."
-      periodValue={period === "today" ? "today" : period === "7d" ? "7" : period === "30d" ? "30" : period === "month" ? "month" : "custom"}
-      onPeriodChange={handlePeriodChange}
     >
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">

@@ -195,12 +195,6 @@ export default function StockMovementLog() {
       showPeriodFilter={false}
       searchValue={productSearch}
       onSearchChange={(val) => { setProductSearch(val); setShowProductResults(true); }}
-      periodValue={period === "today" ? "today" : period === "7d" ? "7" : period === "30d" ? "30" : period === "month" ? "month" : "custom"}
-      onPeriodChange={handlePeriodChange}
-      customFrom={customFrom}
-      customTo={customTo}
-      onCustomFromChange={setCustomFrom}
-      onCustomToChange={setCustomTo}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="hidden md:flex items-center gap-3">
