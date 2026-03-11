@@ -49,6 +49,10 @@ const orderSchema = new mongoose.Schema(
       default: 0,
     },
     amount_due_paisa: { type: mongoose.Schema.Types.Long },
+    has_return: {
+      type: Boolean,
+      default: false,
+    },
     is_deleted: {
       type: Boolean,
       default: false,

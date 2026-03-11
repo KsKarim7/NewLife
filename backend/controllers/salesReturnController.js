@@ -401,14 +401,19 @@ exports.createSalesReturn = async (req, res) => {
     if (originalOrder && total_refund_paisa > 0) {
       const newReceived = Math.max(0, Number(originalOrder.amount_received_paisa || 0) - total_refund_paisa);
       const newDue = Math.max(0, Number(originalOrder.total_paisa || 0) - newReceived);
-      originalOrder.amount_received_paisa = newReceived;
-      originalOrder.amount_due_paisa = newDue;
-      if (newDue <= 0) {
-        originalOrder.status = 'Paid';
-      } else if (newReceived > 0) {
-        originalOrder.status = 'Partially Paid';
-      }
-      await originalOrder.save({ session: useTransaction ? session : undefined });
+      
+      await Order.findByIdAndUpdate(
+        originalOrder._id,
+        {
+          $set: {
+            status: 'Returned',
+            has_return: true,
+            amount_received_paisa: newReceived,
+            amount_due_paisa: newDue,
+          }
+        },
+        { session: useTransaction ? session : undefined }
+      );
     }
 
     if (useTransaction) {

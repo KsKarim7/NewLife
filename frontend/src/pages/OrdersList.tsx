@@ -604,7 +604,7 @@ export default function OrdersList() {
         >
           All
         </Button>
-        {["Confirmed", "Partially Paid", "Paid", "Cancelled"].map(status => (
+        {["Confirmed", "Partially Paid", "Paid", "Cancelled", "Returned"].map(status => (
           <Button
             key={status}
             variant={statusFilter === status ? "default" : "outline"}
@@ -655,10 +655,7 @@ export default function OrdersList() {
                       {toPriceNumber(o.amount_due_paisa) > 0 ? formatCurrency(toPriceNumber(o.amount_due_paisa)) : "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <StatusBadge status={orderStatusToStatusType(o.status)} />
-                        {o.has_return && <StatusBadge status="returned" />}
-                      </div>
+                      <StatusBadge status={orderStatusToStatusType(o.status)} />
                     </td>
                     <td className="px-4 py-3 text-table-body">
                       <div className="flex items-center gap-1">
@@ -671,7 +668,8 @@ export default function OrdersList() {
                         >
                           <Eye className="h-3 w-3" />
                         </Button>
-                        {toPriceNumber(o.amount_due_paisa) > 0 && (
+                        {o.status !== 'Returned' &&
+                         toPriceNumber(o.amount_due_paisa) > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -738,10 +736,7 @@ export default function OrdersList() {
                   >
                     <Eye className="h-3 w-3" />
                   </Button>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <StatusBadge status={orderStatusToStatusType(o.status)} />
-                    {o.has_return && <StatusBadge status="returned" />}
-                  </div>
+                  <StatusBadge status={orderStatusToStatusType(o.status)} />
                 </div>
               </div>
             </div>
