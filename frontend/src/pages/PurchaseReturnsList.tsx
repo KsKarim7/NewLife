@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate } from "@/utils/formatDate";
-import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
+import { exportToPDF, exportToCSV, type ExportSummaryItem } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Package, Plus, FileText, FileSpreadsheet, X, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -247,10 +247,16 @@ export default function PurchaseReturnsList() {
 
       const subtitle = `Period: ${periodLabel} | Total: ${allReturns.length} returns`;
 
+      // Build summary data
+      const summary: ExportSummaryItem[] = [
+        { label: 'Total Returns', value: totalReturns },
+        { label: 'Total Units Returned', value: totalQtyReturned },
+      ];
+
       if (format === 'pdf') {
-        exportToPDF('purchase-returns-export', 'Purchase Returns', subtitle, headers, rows);
+        exportToPDF('purchase-returns-export', 'Purchase Returns', subtitle, headers, rows, summary);
       } else {
-        exportToCSV('purchase-returns-export', headers, rows);
+        exportToCSV('purchase-returns-export', headers, rows, summary);
       }
 
       toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allReturns.length} returns` });

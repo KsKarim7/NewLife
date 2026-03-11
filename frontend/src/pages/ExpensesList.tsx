@@ -4,7 +4,7 @@ import { usePeriod } from "@/context/PeriodContext";
 import { StatCard } from "@/components/shared/StatCard";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate } from "@/utils/formatDate";
-import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
+import { exportToPDF, exportToCSV, type ExportSummaryItem } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,10 +241,17 @@ export default function ExpensesList() {
 
       const subtitle = `Period: ${periodLabel} | Total: ${allExpenses.length} expenses`;
 
+      // Build summary data
+      const exportSummary: ExportSummaryItem[] = [
+        { label: 'Total Expenses', value: formatCurrency(parseFloat(summary.total_amount)) },
+        { label: 'Total Paid', value: formatCurrency(parseFloat(summary.total_paid)) },
+        { label: 'Total Due', value: formatCurrency(parseFloat(summary.total_due)) },
+      ];
+
       if (format === 'pdf') {
-        exportToPDF('expenses-export', 'Expenses', subtitle, headers, rows);
+        exportToPDF('expenses-export', 'Expenses', subtitle, headers, rows, exportSummary);
       } else {
-        exportToCSV('expenses-export', headers, rows);
+        exportToCSV('expenses-export', headers, rows, exportSummary);
       }
 
       toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allExpenses.length} expenses` });

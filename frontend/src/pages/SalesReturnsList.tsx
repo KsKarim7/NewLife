@@ -5,7 +5,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate } from "@/utils/formatDate";
-import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
+import { exportToPDF, exportToCSV, type ExportSummaryItem } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -251,10 +251,16 @@ export default function SalesReturnsList() {
 
       const subtitle = `Period: ${periodLabel} | Total: ${allReturns.length} returns`;
 
+      // Build summary data
+      const summary: ExportSummaryItem[] = [
+        { label: 'Total Returns', value: totalReturns },
+        { label: 'Total Units Returned', value: totalQtyReturned },
+      ];
+
       if (format === 'pdf') {
-        exportToPDF('sales-returns-export', 'Sales Returns', subtitle, headers, rows);
+        exportToPDF('sales-returns-export', 'Sales Returns', subtitle, headers, rows, summary);
       } else {
-        exportToCSV('sales-returns-export', headers, rows);
+        exportToCSV('sales-returns-export', headers, rows, summary);
       }
 
       toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allReturns.length} returns` });

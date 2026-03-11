@@ -4,7 +4,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate, formatDateTime } from "@/utils/formatDate";
-import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
+import { exportToPDF, exportToCSV, type ExportSummaryItem } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -544,10 +544,17 @@ export default function OrdersList() {
 
       const subtitle = `Period: ${periodLabel} | Total: ${allOrders.length} orders`;
 
+      // Build summary data
+      const summary: ExportSummaryItem[] = [
+        { label: 'Total Orders', value: totalOrders },
+        { label: 'Total Revenue', value: formatCurrency(totalRevenue) },
+        { label: 'Total Due', value: formatCurrency(totalDue) },
+      ];
+
       if (format === 'pdf') {
-        exportToPDF('orders-export', 'Orders & Sales', subtitle, headers, rows);
+        exportToPDF('orders-export', 'Orders & Sales', subtitle, headers, rows, summary);
       } else {
-        exportToCSV('orders-export', headers, rows);
+        exportToCSV('orders-export', headers, rows, summary);
       }
 
       toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allOrders.length} orders` });
