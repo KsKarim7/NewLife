@@ -5,6 +5,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate, formatDateTime } from "@/utils/formatDate";
+import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -362,70 +363,45 @@ export default function PurchasesList() {
     setViewingPurchase(purchase);
   };
 
-  // Export purchases as CSV
-  const handleExportCSV = () => {
-    const headers = ["Purchase No", "Date", "Products", "Net Amount", "Paid", "Due"];
-    const rows = purchases.map((p) => [
-      p.purchase_number,
-      formatDate(p.date),
-      p.lines.map((l) => `${l.product_name} (${l.qty})`).join(", "),
-      toPriceNumber(p.net_amount_paisa).toFixed(2),
-      toPriceNumber(p.paid_amount_paisa).toFixed(2),
-      toPriceNumber(p.due_amount_paisa).toFixed(2),
-    ]);
-
-    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `purchases-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Purchases exported",
-      description: `Exported ${purchases.length} purchases as CSV`,
-    });
-  };
-
-  // Export purchases as Excel
-  const handleExportExcel = async () => {
+  // Export purchases as PDF or Excel
+  const handleExportData = async (format: 'pdf' | 'excel') => {
     try {
-      const data = purchases.map((p) => ({
-        "Purchase No": p.purchase_number,
-        Date: formatDate(p.date),
-        Items: p.lines.length,
-        "Net Amount (Taka)": toPriceNumber(p.net_amount_paisa).toFixed(2),
-        "Paid (Taka)": toPriceNumber(p.paid_amount_paisa).toFixed(2),
-        "Due (Taka)": toPriceNumber(p.due_amount_paisa).toFixed(2),
-      }));
-
-      const headers = Object.keys(data[0] || {});
-      const csv = [
-        headers.join(","),
-        ...data.map((row) => headers.map((h) => `"${row[h as keyof typeof row]}"`).join(",")),
-      ].join("\n");
-
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `purchases-${new Date().toISOString().split("T")[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Purchases exported",
-        description: `Exported ${purchases.length} purchases as Excel`,
+      // Fetch all filtered records for export
+      const allData = await getPurchases({
+        page: 1,
+        limit: 9999,
+        from: fromDate || undefined,
+        to: toDate || undefined,
       });
+      const allPurchases = allData.purchases ?? [];
+
+      const headers = ['Purchase No', 'Date', 'Supplier', 'Products', 'Net Amount', 'Paid', 'Due', 'Status'];
+      const rows = allPurchases.map((p: Purchase) => [
+        p.purchase_number,
+        formatDate(p.date || p.createdAt),
+        p.party_name || '—',
+        p.lines?.length ?? 0,
+        formatCurrency(toPriceNumber(p.net_amount_paisa)),
+        formatCurrency(toPriceNumber(p.paid_amount_paisa)),
+        toPriceNumber(p.due_amount_paisa) > 0
+          ? formatCurrency(toPriceNumber(p.due_amount_paisa))
+          : '—',
+        p.status || '—',
+      ]);
+
+      const subtitle = `Period: ${periodLabel} | Total: ${allPurchases.length} purchases`;
+
+      if (format === 'pdf') {
+        exportToPDF('purchases-export', 'Purchases', subtitle, headers, rows);
+      } else {
+        exportToCSV('purchases-export', headers, rows);
+      }
+
+      toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allPurchases.length} purchases` });
     } catch (error) {
       toast({
         title: "Export failed",
+        description: (error instanceof Error ? error.message : "Unknown error"),
         variant: "destructive",
       });
     }
@@ -490,10 +466,10 @@ export default function PurchasesList() {
 
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={purchases.length === 0}>
-            <FileText className="h-4 w-4 mr-1" /> Export CSV
+          <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')} disabled={purchases.length === 0}>
+            <FileText className="h-4 w-4 mr-1" /> Export PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={purchases.length === 0}>
+          <Button variant="outline" size="sm" onClick={() => handleExportData('excel')} disabled={purchases.length === 0}>
             <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
           </Button>
         </div>

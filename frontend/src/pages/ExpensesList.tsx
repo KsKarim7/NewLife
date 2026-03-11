@@ -4,6 +4,7 @@ import { usePeriod } from "@/context/PeriodContext";
 import { StatCard } from "@/components/shared/StatCard";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate } from "@/utils/formatDate";
+import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,6 +215,48 @@ export default function ExpensesList() {
     }
   };
 
+  const handleExportData = async (format: 'pdf' | 'excel') => {
+    try {
+      // Fetch all filtered records for export
+      const allData = await getExpenses({
+        page: 1,
+        limit: 9999,
+        from: queryFrom || undefined,
+        to: queryTo || undefined,
+      });
+      const allExpenses = allData.data?.expenses ?? [];
+
+      const headers = ['Date', 'Party Name', 'Category', 'Description', 'Total Amount', 'Paid', 'Due'];
+      const rows = allExpenses.map((e: Expense) => [
+        formatDate(e.date || e.createdAt),
+        e.party_name || '—',
+        '—',
+        e.description || '—',
+        formatCurrency(parseFloat(e.total_amount_paisa) / 100),
+        formatCurrency(parseFloat(e.paid_amount_paisa) / 100),
+        parseFloat(e.due_amount_paisa) / 100 > 0
+          ? formatCurrency(parseFloat(e.due_amount_paisa) / 100)
+          : '—',
+      ]);
+
+      const subtitle = `Period: ${periodLabel} | Total: ${allExpenses.length} expenses`;
+
+      if (format === 'pdf') {
+        exportToPDF('expenses-export', 'Expenses', subtitle, headers, rows);
+      } else {
+        exportToCSV('expenses-export', headers, rows);
+      }
+
+      toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allExpenses.length} expenses` });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: (error instanceof Error ? error.message : "Unknown error"),
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <PageLayout 
       title="Expenses" 
@@ -251,10 +294,10 @@ export default function ExpensesList() {
       <div className="flex items-center justify-end gap-2 mb-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <div className="hidden md:flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')}>
               <FileText className="h-4 w-4 mr-1" /> Export PDF
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => handleExportData('excel')}>
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
             </Button>
           </div>

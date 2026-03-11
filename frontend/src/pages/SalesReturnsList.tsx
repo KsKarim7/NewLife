@@ -5,6 +5,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate } from "@/utils/formatDate";
+import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -226,73 +227,41 @@ export default function SalesReturnsList() {
     setLineItems(lineItems.filter((_, i) => i !== index));
   };
 
-  // Export returns as CSV
-  const handleExportCSV = () => {
-    const headers = ["Return No", "Date", "Customer", "Order Ref", "Items", "Qty", "Notes"];
-    const rows = filteredReturns.map(r => [
-      r.return_number,
-      formatDate(r.return_date),
-      r.customer.name,
-      r.original_order_ref || "-",
-      r.lines.map(l => l.product_name).join(", "),
-      r.lines.reduce((sum, l) => sum + l.qty, 0),
-      r.notes || "-",
-    ]);
-
-    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sales-returns-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Returns exported",
-      description: `Exported ${filteredReturns.length} returns as CSV`,
-    });
-  };
-
-  // Export returns as Excel (simple CSV conversion)
-  const handleExportExcel = async () => {
+  // Export returns as PDF or Excel
+  const handleExportData = async (format: 'pdf' | 'excel') => {
     try {
-      const data = filteredReturns.map(r => ({
-        "Return No": r.return_number,
-        "Date": formatDate(r.return_date),
-        "Customer": r.customer.name,
-        "Phone": r.customer.phone || "-",
-        "Order Ref": r.original_order_ref || "-",
-        "Items": r.lines.map(l => l.product_name).join(", "),
-        "Total Qty": r.lines.reduce((sum, l) => sum + l.qty, 0),
-        "Notes": r.notes || "-",
-      }));
-
-      const headers = Object.keys(data[0] || {});
-      const csv = [
-        headers.join(","),
-        ...data.map(row => headers.map(h => `"${row[h as keyof typeof row]}"`).join(",")),
-      ].join("\n");
-
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `sales-returns-${new Date().toISOString().split("T")[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Returns exported",
-        description: `Exported ${filteredReturns.length} returns as Excel`,
+      // Fetch all filtered records for export
+      const allData = await getSalesReturns({
+        page: 1,
+        limit: 9999,
+        from: fromDate || undefined,
+        to: toDate || undefined,
       });
+      const allReturns = allData.returns ?? [];
+
+      const headers = ['Return No', 'Date', 'Order No', 'Customer', 'Items', 'Refund Amount'];
+      const rows = allReturns.map((r: SalesReturn) => [
+        r.return_number,
+        formatDate(r.createdAt),
+        r.original_order_ref || '—',
+        r.customer?.name ?? '—',
+        r.lines?.length ?? 0,
+        formatCurrency((r as any).total_refund_paisa / 100 || 0),
+      ]);
+
+      const subtitle = `Period: ${periodLabel} | Total: ${allReturns.length} returns`;
+
+      if (format === 'pdf') {
+        exportToPDF('sales-returns-export', 'Sales Returns', subtitle, headers, rows);
+      } else {
+        exportToCSV('sales-returns-export', headers, rows);
+      }
+
+      toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allReturns.length} returns` });
     } catch (error) {
       toast({
         title: "Export failed",
+        description: (error instanceof Error ? error.message : "Unknown error"),
         variant: "destructive",
       });
     }
@@ -336,10 +305,10 @@ export default function SalesReturnsList() {
 
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filteredReturns.length === 0}>
-            <FileText className="h-4 w-4 mr-1" /> Export CSV
+          <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')} disabled={filteredReturns.length === 0}>
+            <FileText className="h-4 w-4 mr-1" /> Export PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={filteredReturns.length === 0}>
+          <Button variant="outline" size="sm" onClick={() => handleExportData('excel')} disabled={filteredReturns.length === 0}>
             <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
           </Button>
         </div>

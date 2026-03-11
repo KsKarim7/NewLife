@@ -13,6 +13,7 @@ export interface PurchaseReturn {
   purchase_number: string;
   lines: PurchaseReturnLine[];
   date: string;
+  total_return_paisa?: number;
   inventory_movements?: string[];
   createdAt: string;
   updatedAt: string;

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate } from "@/utils/formatDate";
+import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Package, Plus, FileText, FileSpreadsheet, X, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -223,27 +224,43 @@ export default function PurchaseReturnsList() {
     setLineItems(lineItems.filter((_, i) => i !== index));
   };
 
-  // Export returns as CSV
-  const handleExportCSV = () => {
-    const headers = ["Return No", "Purchase No", "Date", "Items", "Qty"];
-    const rows = filteredReturns.map(r => [
-      r.return_number,
-      r.purchase_number,
-      formatDate(r.date),
-      r.lines.map(l => l.product_name).join(", "),
-      r.lines.reduce((sum, l) => sum + l.qty, 0),
-    ]);
+  // Export returns as PDF or Excel
+  const handleExportData = async (format: 'pdf' | 'excel') => {
+    try {
+      // Fetch all filtered records for export
+      const allData = await getPurchaseReturns({
+        page: 1,
+        limit: 9999,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      });
+      const allReturns = allData.returns ?? [];
 
-    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `purchase-returns-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const headers = ['Return No', 'Date', 'Purchase No', 'Items', 'Return Value'];
+      const rows = allReturns.map((r: PurchaseReturn) => [
+        r.return_number,
+        formatDate(r.date || r.createdAt),
+        r.purchase_number || '—',
+        r.lines?.length ?? 0,
+        formatCurrency((r.total_return_paisa ?? 0) / 100),
+      ]);
+
+      const subtitle = `Period: ${periodLabel} | Total: ${allReturns.length} returns`;
+
+      if (format === 'pdf') {
+        exportToPDF('purchase-returns-export', 'Purchase Returns', subtitle, headers, rows);
+      } else {
+        exportToCSV('purchase-returns-export', headers, rows);
+      }
+
+      toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allReturns.length} returns` });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: (error instanceof Error ? error.message : "Unknown error"),
+        variant: "destructive",
+      });
+    }
   };
 
   const openAddSheet = () => {
@@ -268,11 +285,11 @@ export default function PurchaseReturnsList() {
 
       <div className="flex items-center justify-between mb-4">
         <div className="hidden md:flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
+          <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')}>
             <FileText className="h-4 w-4 mr-1" /> Export PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <FileSpreadsheet className="h-4 w-4 mr-1" /> Export CSV
+          <Button variant="outline" size="sm" onClick={() => handleExportData('excel')}>
+            <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
           </Button>
         </div>
         <Button className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90" onClick={openAddSheet}>

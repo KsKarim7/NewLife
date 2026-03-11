@@ -14,7 +14,7 @@ const buildPagination = (total, page, limit) => {
 
 exports.getAllPurchaseReturns = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-  const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
   const { from, to } = req.query;
 
   const filter = {};

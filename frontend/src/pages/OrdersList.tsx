@@ -4,6 +4,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
 import { formatDate, formatDateTime } from "@/utils/formatDate";
+import { exportToPDF, exportToCSV } from "@/utils/exportUtils";
 import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -515,6 +516,50 @@ export default function OrdersList() {
     createOrderMutation.mutate(payload);
   };
 
+  const handleExportData = async (format: 'pdf' | 'excel') => {
+    try {
+      // Fetch all filtered records for export
+      const allData = await getOrders({
+        page: 1,
+        limit: 9999,
+        status: statusFilter || undefined,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      });
+      const allOrders = allData.orders ?? [];
+
+      const headers = ['Order No', 'Date', 'Customer', 'Items', 'Total', 'Received', 'Due', 'Status'];
+      const rows = allOrders.map((o: Order) => [
+        o.order_number,
+        formatDate(o.createdAt),
+        o.customer?.name ?? '—',
+        o.lines?.length ?? 0,
+        formatCurrency(toPriceNumber(o.total_paisa)),
+        formatCurrency(toPriceNumber(o.amount_received_paisa)),
+        toPriceNumber(o.amount_due_paisa) > 0
+          ? formatCurrency(toPriceNumber(o.amount_due_paisa))
+          : '—',
+        o.status,
+      ]);
+
+      const subtitle = `Period: ${periodLabel} | Total: ${allOrders.length} orders`;
+
+      if (format === 'pdf') {
+        exportToPDF('orders-export', 'Orders & Sales', subtitle, headers, rows);
+      } else {
+        exportToCSV('orders-export', headers, rows);
+      }
+
+      toast({ title: `Export ${format.toUpperCase()} successful`, description: `Exported ${allOrders.length} orders` });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: (error instanceof Error ? error.message : "Unknown error"),
+        variant: "destructive",
+      });
+    }
+  };
+
   // Filter by search term locally
   const filteredOrders = orders.filter(o =>
     o.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -584,8 +629,8 @@ export default function OrdersList() {
 
       <div className="flex items-center justify-between mb-4 gap-2">
         <div className="hidden md:flex items-center gap-2">
-          <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" /> Export PDF</Button>
-          <Button variant="outline" size="sm"><FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel</Button>
+          <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')}><FileText className="h-4 w-4 mr-1" /> Export PDF</Button>
+          <Button variant="outline" size="sm" onClick={() => handleExportData('excel')}><FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel</Button>
         </div>
         <Button 
           className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
