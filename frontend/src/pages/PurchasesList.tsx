@@ -9,7 +9,7 @@ import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Truck, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, Trash2, Eye } from "lucide-react";
+import { Truck, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, Trash2, Eye, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePeriod } from "@/context/PeriodContext";
 import { getPurchases, createPurchase, addPurchasePayment, cancelPurchase, type Purchase, type PurchasesResponse } from "@/api/purchasesApi";
@@ -40,6 +40,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/components/ui/use-toast";
 
 const paisaToTaka = (paisa: number) => {
@@ -95,6 +107,10 @@ export default function PurchasesList() {
   const [lineItems, setLineItems] = useState<PurchaseLineItem[]>([]);
   const [paidAmount, setPaidAmount] = useState("");
 
+  // Product search state for combobox
+  const [productSearch, setProductSearch] = useState('');
+  const [productPopoverOpen, setProductPopoverOpen] = useState(false);
+
   const getQueryDateRange = () => {
     if (period === "custom") {
       return { from: customFrom, to: customTo };
@@ -148,6 +164,12 @@ export default function PurchasesList() {
                       period === '30d'    ? 'Last 30 days'  :
                       period === 'month'  ? 'This month'    :
                       period === 'custom' ? 'Custom range'  : '';
+
+  // Filter products for combobox based on search
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.product_code?.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
   // Calculate current form values
   const netAmount = lineItems.reduce((sum, item) => {
@@ -265,6 +287,8 @@ export default function PurchasesList() {
     setSelectedProduct("");
     setQuantity(1);
     setBuyingPrice("");
+    setProductSearch("");
+    setProductPopoverOpen(false);
   };
 
   const handleRemoveLineItem = (index: number) => {
@@ -647,18 +671,52 @@ export default function PurchasesList() {
 
               <div className="space-y-2 mb-3">
                 <label className="text-sm font-medium">Select Product</label>
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a product..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((p) => (
-                      <SelectItem key={p._id} value={p._id}>
-                        {p.name} ({p.product_code}) - Stock: {p.stock_qty}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={productPopoverOpen} onOpenChange={setProductPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md bg-background hover:bg-muted transition-colors"
+                    >
+                      <span className={selectedProduct ? 'text-foreground' : 'text-muted-foreground'}>
+                        {selectedProduct
+                          ? (() => {
+                              const product = products.find(p => p._id === selectedProduct);
+                              return product ? `${product.name} (${product.product_code}) - Stock: ${product.stock_qty}` : 'Choose a product...';
+                            })()
+                          : 'Search product by name or code...'}
+                      </span>
+                      <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Type product name or code..."
+                        value={productSearch}
+                        onValueChange={setProductSearch}
+                      />
+                      <CommandList className="max-h-48 overflow-y-auto">
+                        <CommandEmpty>No products found.</CommandEmpty>
+                        {filteredProducts.map((product) => (
+                          <CommandItem
+                            key={product._id}
+                            value={product.name}
+                            onSelect={() => {
+                              setSelectedProduct(product._id);
+                              setProductPopoverOpen(false);
+                              setProductSearch("");
+                            }}
+                          >
+                            <div className="flex flex-col w-full">
+                              <span className="text-sm font-medium">{product.name}</span>
+                              <span className="text-xs text-muted-foreground">{product.product_code} - Stock: {product.stock_qty}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2 mb-3">
@@ -682,6 +740,21 @@ export default function PurchasesList() {
                   onChange={(e) => setBuyingPrice(e.target.value)}
                 />
               </div>
+
+              {/* Line Total Preview */}
+              {(() => {
+                const qty = parseFloat(String(quantity)) || 0;
+                const price = parseFloat(buyingPrice) || 0;
+                const lineTotal = qty * price;
+                return lineTotal > 0 ? (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border mb-3">
+                    <span className="text-sm text-muted-foreground">Line Total</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {formatCurrency(lineTotal)}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
 
               <Button size="sm" onClick={handleAddLineItem} className="w-full">
                 Add to Purchase

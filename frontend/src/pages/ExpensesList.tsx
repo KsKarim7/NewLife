@@ -468,6 +468,35 @@ export default function ExpensesList() {
               />
             </div>
 
+            {/* Due Amount Breakdown */}
+            {(() => {
+              const total = parseFloat(totalAmount) || 0;
+              const paid = parseFloat(paidAmount) || 0;
+              const due = Math.max(0, total - paid);
+              return (total > 0 || paid > 0) ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">
+                    <span className="text-sm text-muted-foreground">Total Amount</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">
+                    <span className="text-sm text-muted-foreground">Paid Amount</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {formatCurrency(paid)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border border-dashed">
+                    <span className="text-sm text-muted-foreground font-medium">Due Amount</span>
+                    <span className={`text-sm font-semibold ${due > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                      {formatCurrency(due)}
+                    </span>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             <div>
               <label className="text-sm font-medium mb-1 block">Description</label>
               <Input

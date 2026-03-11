@@ -8,10 +8,22 @@ import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X, Eye, Printer } from "lucide-react";
+import { ShoppingCart, DollarSign, AlertCircle, Plus, FileText, FileSpreadsheet, X, Eye, Printer, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import { usePeriod } from "@/context/PeriodContext";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Sheet,
   SheetContent,
@@ -97,6 +109,10 @@ export default function OrdersList() {
     { product_id: "", qty: 1, unit_price: "", vat_percent: 0 }
   ]);
   const [amountReceived, setAmountReceived] = useState("");
+
+  // Product search state for combobox
+  const [productSearch, setProductSearch] = useState('');
+  const [productPopoverOpen, setProductPopoverOpen] = useState(false);
 
   // Payment dialog state
   const [payingOrder, setPayingOrder] = useState<Order | null>(null);
@@ -286,6 +302,8 @@ export default function OrdersList() {
     setCustomerPhone("");
     setOrderLines([{ product_id: "", qty: 1, unit_price: "", vat_percent: 0 }]);
     setAmountReceived("");
+    setProductSearch("");
+    setProductPopoverOpen(false);
   };
 
   const handleAddOrderLine = () => {
@@ -311,7 +329,16 @@ export default function OrdersList() {
       unit_price: selectedProduct?.selling_price_taka ?? "",
     };
     setOrderLines(newLines);
+    // Reset search and close popover after selection
+    setProductSearch("");
+    setProductPopoverOpen(false);
   };
+
+  // Filter products for combobox based on search
+  const filteredProducts = (productsData?.products ?? []).filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.product_code?.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
   const handleOpenPaymentDialog = (order: Order) => {
     const amountDue = toPriceNumber(order.amount_due_paisa);
@@ -808,18 +835,48 @@ export default function OrdersList() {
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium">Product *</label>
-                    <Select value={line.product_id} onValueChange={(value) => handleProductSelect(index, value)}>
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(productsData?.products ?? []).map((product: Product) => (
-                          <SelectItem key={product._id} value={product._id}>
-                            {product.name} ({product.product_code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={productPopoverOpen} onOpenChange={setProductPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md bg-background hover:bg-muted transition-colors h-8"
+                        >
+                          <span className={line.product_id ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'}>
+                            {line.product_id
+                              ? (() => {
+                                  const product = (productsData?.products ?? []).find(p => p._id === line.product_id);
+                                  return product ? `${product.name} (${product.product_code})` : 'Select product';
+                                })()
+                              : 'Search product...'}
+                          </span>
+                          <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput
+                            placeholder="Type product name or code..."
+                            value={productSearch}
+                            onValueChange={setProductSearch}
+                          />
+                          <CommandList className="max-h-48 overflow-y-auto">
+                            <CommandEmpty>No products found.</CommandEmpty>
+                            {filteredProducts.map((product) => (
+                              <CommandItem
+                                key={product._id}
+                                value={product.name}
+                                onSelect={() => handleProductSelect(index, product._id)}
+                              >
+                                <div className="flex flex-col w-full">
+                                  <span className="text-sm font-medium">{product.name}</span>
+                                  <span className="text-xs text-muted-foreground">{product.product_code}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -859,8 +916,40 @@ export default function OrdersList() {
                       placeholder="VAT %"
                     />
                   </div>
+
+                  {/* Line Total Preview */}
+                  {(() => {
+                    const qty = parseFloat(String(line.qty)) || 0;
+                    const price = parseFloat(line.unit_price) || 0;
+                    const lineTotal = qty * price;
+                    return lineTotal > 0 ? (
+                      <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">
+                        <span className="text-sm text-muted-foreground">Line Total</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {formatCurrency(lineTotal)}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               ))}
+
+              {/* Order Subtotal Preview */}
+              {(() => {
+                const completedTotal = orderLines.reduce((sum, line) => {
+                  const qty = parseFloat(String(line.qty)) || 0;
+                  const price = parseFloat(line.unit_price) || 0;
+                  return sum + (qty * price);
+                }, 0);
+                return (completedTotal > 0) ? (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted/50 border border-border border-dashed">
+                    <span className="text-sm text-muted-foreground">Order Subtotal</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {formatCurrency(completedTotal)}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
             </div>
 
             {/* Amount Received */}

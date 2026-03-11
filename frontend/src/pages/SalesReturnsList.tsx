@@ -8,7 +8,7 @@ import { getPeriodDateRange } from "@/utils/dateRangeUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Package, Plus, FileText, FileSpreadsheet, Trash2, X } from "lucide-react";
+import { Package, Plus, FileText, FileSpreadsheet, Trash2, X, ChevronsUpDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePeriod } from "@/context/PeriodContext";
 import { getSalesReturns, createSalesReturn, type SalesReturn, type SalesReturnsResponse } from "@/api/salesReturnsApi";
@@ -22,6 +22,18 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/components/ui/use-toast";
 import type { StatusType } from "@/components/shared/StatusBadge";
 
@@ -65,6 +77,10 @@ export default function SalesReturnsList() {
   const [orderRef, setOrderRef] = useState("");
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState(1);
+
+  // Product search state for combobox
+  const [productSearch, setProductSearch] = useState('');
+  const [productPopoverOpen, setProductPopoverOpen] = useState(false);
   const [returnNotes, setReturnNotes] = useState("");
   const [lineItems, setLineItems] = useState<ReturnLineItem[]>([]);
 
@@ -116,6 +132,12 @@ export default function SalesReturnsList() {
                       period === '30d'    ? 'Last 30 days'  :
                       period === 'month'  ? 'This month'    :
                       period === 'custom' ? 'Custom range'  : '';
+
+  // Filter products for combobox based on search
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.product_code?.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
   // Filter by search term locally
   const filteredReturns = salesReturns.filter(r =>
@@ -195,6 +217,8 @@ export default function SalesReturnsList() {
 
     setSelectedProduct("");
     setQuantity(1);
+    setProductSearch("");
+    setProductPopoverOpen(false);
   };
 
   const handleRemoveLineItem = (index: number) => {
@@ -467,18 +491,52 @@ export default function SalesReturnsList() {
 
               <div className="space-y-2 mb-3">
                 <label className="text-sm font-medium">Select Product</label>
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a product..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map(p => (
-                      <SelectItem key={p._id} value={p._id}>
-                        {p.name} ({p.product_code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={productPopoverOpen} onOpenChange={setProductPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md bg-background hover:bg-muted transition-colors"
+                    >
+                      <span className={selectedProduct ? 'text-foreground' : 'text-muted-foreground'}>
+                        {selectedProduct
+                          ? (() => {
+                              const product = products.find(p => p._id === selectedProduct);
+                              return product ? `${product.name} (${product.product_code})` : 'Choose a product...';
+                            })()
+                          : 'Search product by name or code...'}
+                      </span>
+                      <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Type product name or code..."
+                        value={productSearch}
+                        onValueChange={setProductSearch}
+                      />
+                      <CommandList className="max-h-48 overflow-y-auto">
+                        <CommandEmpty>No products found.</CommandEmpty>
+                        {filteredProducts.map((product) => (
+                          <CommandItem
+                            key={product._id}
+                            value={product.name}
+                            onSelect={() => {
+                              setSelectedProduct(product._id);
+                              setProductPopoverOpen(false);
+                              setProductSearch("");
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">{product.name}</span>
+                              <span className="text-xs text-muted-foreground">{product.product_code}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="flex gap-2 mb-3">
@@ -497,6 +555,22 @@ export default function SalesReturnsList() {
                   </Button>
                 </div>
               </div>
+
+              {/* Return Value Preview */}
+              {(() => {
+                const selectedProd = selectedProduct ? products.find(p => p._id === selectedProduct) : null;
+                const qty = parseFloat(String(quantity)) || 0;
+                const price = selectedProd ? parseFloat(String(selectedProd.selling_price_taka || selectedProd.price || 0)) : 0;
+                const returnValue = qty * price;
+                return returnValue > 0 ? (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border mb-3">
+                    <span className="text-sm text-muted-foreground">Return Value</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {formatCurrency(returnValue)}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
 
               {/* Line Items */}
               {lineItems.length > 0 && (
