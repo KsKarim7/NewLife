@@ -79,7 +79,7 @@ export default function Dashboard() {
       searchPlaceholder="Search products, orders, customers..."
     >
       {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
         {statsLoading ? (
           <>
             <Skeleton className="h-[88px] md:h-[110px] bg-card rounded-lg shadow-sm border border-border" />

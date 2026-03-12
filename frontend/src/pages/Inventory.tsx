@@ -555,7 +555,8 @@ export default function Inventory() {
                 <th className="text-left text-table-header uppercase text-muted-foreground px-4 py-3 w-12"></th>
                 <th className="text-left text-table-header uppercase text-muted-foreground px-4 py-3">Product Name</th>
                 <th className="text-left text-table-header uppercase text-muted-foreground px-4 py-3">Category</th>
-                <th className="text-right text-table-header uppercase text-muted-foreground px-4 py-3">Price</th>
+                <th className="text-right text-table-header uppercase text-muted-foreground px-4 py-3">Selling Price</th>
+                <th className="text-right text-table-header uppercase text-muted-foreground px-4 py-3">Buying Price</th>
                 <th className="text-center text-table-header uppercase text-muted-foreground px-4 py-3">Stock</th>
                 <th className="text-right text-table-header uppercase text-muted-foreground px-4 py-3 w-32">Actions</th>
               </tr>
@@ -564,7 +565,7 @@ export default function Inventory() {
               {isProductsLoading && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-6 text-center text-sm text-muted-foreground"
                   >
                     Loading products...
@@ -574,7 +575,7 @@ export default function Inventory() {
               {!isProductsLoading && products.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-6 text-center text-sm text-muted-foreground"
                   >
                     No products found.
@@ -612,6 +613,9 @@ export default function Inventory() {
                   </td>
                   <td className="px-4 py-3 text-table-body text-right font-medium text-card-foreground">
                     {formatCurrency(parseFloat(product.selling_price_taka))}
+                  </td>
+                  <td className="px-4 py-3 text-table-body text-right font-medium text-card-foreground">
+                    {formatCurrency(parseFloat(product.buying_price_taka ?? "0"))}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <StatusBadge
