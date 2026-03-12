@@ -395,12 +395,12 @@ export default function Settings() {
       <div className="space-y-6">
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
-          <TabsTrigger value="store">Store Info</TabsTrigger>
-          <TabsTrigger value="logo">Logo</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="retention">Retention</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto scrollbar-none">
+          <TabsTrigger value="store" className="whitespace-nowrap text-xs md:text-sm px-3 md:px-4">Store Info</TabsTrigger>
+          <TabsTrigger value="logo" className="whitespace-nowrap text-xs md:text-sm px-3 md:px-4">Logo</TabsTrigger>
+          <TabsTrigger value="users" className="whitespace-nowrap text-xs md:text-sm px-3 md:px-4">Users</TabsTrigger>
+          <TabsTrigger value="retention" className="whitespace-nowrap text-xs md:text-sm px-3 md:px-4">Retention</TabsTrigger>
+          <TabsTrigger value="account" className="whitespace-nowrap text-xs md:text-sm px-3 md:px-4">Account</TabsTrigger>
         </TabsList>
 
         {/* Store Information Tab */}

@@ -150,8 +150,8 @@ export function Header({
 
         {/* Right side */}
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Next Day toggle — hidden on mobile */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Next Day toggle */}
+          <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Next Day</span>
             <Switch
               checked={nextDayMode}
@@ -161,9 +161,9 @@ export function Header({
             />
           </div>
 
-          {/* Date range — hidden on mobile */}
+          {/* Date range */}
           {showPeriodFilter && (
-            <div className="hidden md:block">
+            <div className="block">
               <Select
                 value={period}
                 onValueChange={(value) => setPeriod(value)}
@@ -185,7 +185,7 @@ export function Header({
 
           {/* Custom date range inputs — show only when custom is selected */}
           {showPeriodFilter && period === "custom" && (
-            <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Input
                 type="date"
                 value={customFrom ?? ""}
