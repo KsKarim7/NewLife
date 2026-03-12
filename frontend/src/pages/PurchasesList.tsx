@@ -985,7 +985,7 @@ export default function PurchasesList() {
 
               {/* Line Items */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Items</p>
+                <p className="text-sm font-medium text-muted-foreground">Items {viewingPurchase.has_returns && <span className="text-warning">({viewingPurchase.total_return_count} returned)</span>}</p>
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50 border-b">
@@ -997,13 +997,25 @@ export default function PurchasesList() {
                       </tr>
                     </thead>
                     <tbody>
-                      {viewingPurchase.lines.map((line, idx) => (
+                      {viewingPurchase.lines.map((line: any, idx: number) => (
                         <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="px-2 py-2">
                             <div className="font-medium">{line.product_name}</div>
                             <div className="text-muted-foreground">{line.product_code}</div>
+                            {line.qty_returned > 0 && (
+                              <div className="text-xs text-warning font-medium mt-0.5">
+                                ↩ {line.qty_returned} returned
+                              </div>
+                            )}
                           </td>
-                          <td className="text-center px-2 py-2">{line.qty}</td>
+                          <td className="text-center px-2 py-2">
+                            {line.qty}
+                            {line.qty_returned > 0 && (
+                              <div className="text-xs text-muted-foreground">
+                                (net: {line.qty_net})
+                              </div>
+                            )}
+                          </td>
                           <td className="text-right px-2 py-2">{formatCurrency(toPriceNumber(line.buying_price_paisa))}</td>
                           <td className="text-right px-2 py-2 font-medium">{formatCurrency(toPriceNumber(line.line_total_paisa))}</td>
                         </tr>

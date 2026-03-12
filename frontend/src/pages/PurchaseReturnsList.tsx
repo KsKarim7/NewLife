@@ -172,6 +172,8 @@ export default function PurchaseReturnsList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchaseReturns"] });
+      // Also invalidate purchases query so the view panel shows updated amounts
+      queryClient.invalidateQueries({ queryKey: ["purchases"] });
       setIsCreateSheetOpen(false);
       // Reset form
       setPurchaseNumber("");
