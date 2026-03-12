@@ -87,21 +87,32 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       )}
     >
       {/* Logo */}
-      <Link to="/" className="flex flex-col px-4 h-[60px] border-b border-sidebar-border justify-center hover:opacity-80 transition-opacity">
-        <div className="flex items-center gap-2">
+      <Link to="/" className="flex items-center gap-3 px-4 h-[60px] border-b border-sidebar-border hover:opacity-80 transition-opacity">
+        {/* Logo — 40×40px */}
+        <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center">
           {settings?.store_info.logo_base64 ? (
             <img
               src={settings.store_info.logo_base64}
               alt="Store Logo"
-              className="h-6 w-6 object-contain flex-shrink-0"
+              className="h-10 w-10 object-contain rounded-md"
             />
           ) : (
-            <Package className="h-6 w-6 text-secondary flex-shrink-0" />
+            <div className="h-10 w-10 flex items-center justify-center rounded-md bg-primary/10">
+              <Package className="h-6 w-6 text-secondary flex-shrink-0" />
+            </div>
           )}
-          {!collapsed && <span className="text-lg font-bold tracking-tight">{settings?.store_info.store_name || "IMS"}</span>}
         </div>
-        {!collapsed && settings?.store_info.physical_address && (
-          <p className="text-xs text-sidebar-foreground/60 leading-tight">{settings.store_info.physical_address}</p>
+
+        {/* Store name and address */}
+        {!collapsed && (
+          <div className="flex flex-col leading-tight min-w-0">
+            <span className="font-semibold text-sm text-sidebar-foreground truncate">
+              {settings?.store_info.store_name || "New Life"}
+            </span>
+            <span className="text-xs text-sidebar-foreground/60 truncate">
+              {settings?.store_info.physical_address || "New Market"}
+            </span>
+          </div>
         )}
       </Link>
 
