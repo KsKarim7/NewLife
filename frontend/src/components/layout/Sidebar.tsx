@@ -89,9 +89,9 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {/* Logo */}
       <Link to="/" className="flex flex-col px-4 h-[60px] border-b border-sidebar-border justify-center hover:opacity-80 transition-opacity">
         <div className="flex items-center gap-2">
-          {settings?.store_info.logo_url ? (
+          {settings?.store_info.logo_base64 ? (
             <img
-              src={settings.store_info.logo_url}
+              src={settings.store_info.logo_base64}
               alt="Store Logo"
               className="h-6 w-6 object-contain flex-shrink-0"
             />

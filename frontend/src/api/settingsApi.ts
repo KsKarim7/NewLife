@@ -9,6 +9,7 @@ export interface StoreInfo {
   physical_address?: string;
   city?: string;
   logo_url?: string;
+  logo_base64?: string | null;
   currency_symbol: string;
 }
 
@@ -87,6 +88,7 @@ const normalizeSettings = (item: Partial<Settings> & Record<string, unknown>): S
       physical_address: item.store_info?.physical_address || "",
       city: item.store_info?.city || "",
       logo_url: item.store_info?.logo_url || "",
+      logo_base64: item.store_info?.logo_base64 || null,
       currency_symbol: item.store_info?.currency_symbol || "৳",
     },
     purge_after_days: item.purge_after_days || 30,

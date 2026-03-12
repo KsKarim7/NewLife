@@ -244,11 +244,11 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Client-side size check — 200KB
-    if (file.size > 200 * 1024) {
+    // Client-side size check — 2MB
+    if (file.size > 2 * 1024 * 1024) {
       toast({
         title: 'File too large',
-        description: 'Logo must be under 200KB. Please resize the image and try again.',
+        description: 'Logo must be under 2MB. Please resize the image and try again.',
         variant: 'destructive',
       });
       e.target.value = '';

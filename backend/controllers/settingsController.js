@@ -195,11 +195,11 @@ exports.uploadLogo = async (req, res) => {
       });
     }
 
-    // ~200KB file = ~270KB base64 string
-    if (logo_base64.length > 300000) {
+    // ~2MB file = ~2.7MB base64 string
+    if (logo_base64.length > 2800000) {
       return res.status(400).json({
         success: false,
-        message: 'Logo too large. Maximum file size is 200KB.',
+        message: 'Logo too large. Maximum file size is 2MB.',
       });
     }
 
