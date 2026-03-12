@@ -88,17 +88,17 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
     >
       {/* Logo */}
       <Link to="/" className="flex items-center gap-3 px-4 h-[60px] border-b border-sidebar-border hover:opacity-80 transition-opacity">
-        {/* Logo — 40×40px */}
-        <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center">
+        {/* Logo — 60×60px */}
+        <div className="flex-shrink-0 h-[60px] w-[60px] flex items-center justify-center">
           {settings?.store_info.logo_base64 ? (
             <img
               src={settings.store_info.logo_base64}
               alt="Store Logo"
-              className="h-10 w-10 object-contain rounded-md"
+              className="h-[60px] w-[60px] object-contain rounded-md"
             />
           ) : (
-            <div className="h-10 w-10 flex items-center justify-center rounded-md bg-primary/10">
-              <Package className="h-6 w-6 text-secondary flex-shrink-0" />
+            <div className="h-[60px] w-[60px] flex items-center justify-center rounded-md bg-primary/10">
+              <Package className="h-8 w-8 text-secondary flex-shrink-0" />
             </div>
           )}
         </div>
