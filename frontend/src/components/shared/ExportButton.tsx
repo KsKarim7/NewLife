@@ -29,23 +29,45 @@ export function ExportButton({ module, from, to, format, label }: ExportButtonPr
     setIsLoading(true);
     try {
       const blob = await exportReport({ module, from, to, format });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
 
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const day = String(now.getDate()).padStart(2, "0");
-      const datePart = `${year}-${month}-${day}`;
+      if (format === "pdf") {
+        // For PDF: read the HTML content and display in a popup window
+        // The backend sends HTML content as a Blob for PDF format
+        const htmlContent = await blob.text();
+        
+        const win = window.open('', '_blank', 'width=900,height=700');
+        if (!win) {
+          toast({
+            title: "Popup blocked",
+            description: "Please allow popups for this site to export PDF.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        win.document.write(htmlContent);
+        win.document.close();
+        // The HTML content should include auto-print script, or manually trigger:
+        win.focus();
+        window.setTimeout(() => win.print(), 250);
+      } else {
+        // For Excel: download as file
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
 
-      const extension = format === "pdf" ? "pdf" : "xlsx";
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const datePart = `${year}-${month}-${day}`;
 
-      a.href = url;
-      a.download = `${module}-report-${datePart}.${extension}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+        a.href = url;
+        a.download = `${module}-report-${datePart}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch (error: unknown) {
       const message =
         (error as { message?: string })?.message ?? "Failed to export report";
