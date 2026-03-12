@@ -74,16 +74,27 @@ export function MobileSidebarDrawer({ open, onClose }: MobileSidebarDrawerProps)
 
         {/* Logo */}
         <Link to="/" onClick={onClose} className="flex items-center gap-2 px-4 h-[60px] border-b border-sidebar-border hover:opacity-80 transition-opacity">
-          {settings?.store_info.logo_url ? (
-            <img
-              src={settings.store_info.logo_url}
-              alt="Store Logo"
-              className="h-6 w-6 object-contain flex-shrink-0"
-            />
-          ) : (
-            <Package className="h-6 w-6 text-secondary flex-shrink-0" />
-          )}
-          <span className="text-lg font-bold tracking-tight">{settings?.store_info.store_name || "IMS"}</span>
+          <div className="flex-shrink-0 h-[40px] w-[40px] flex items-center justify-center">
+            {settings?.store_info.logo_base64 || settings?.store_info.logo_url ? (
+              <img
+                src={settings.store_info.logo_base64 || settings.store_info.logo_url}
+                alt="Store Logo"
+                className="h-[40px] w-[40px] object-contain rounded-md"
+              />
+            ) : (
+              <Package className="h-6 w-6 text-secondary flex-shrink-0" />
+            )}
+          </div>
+          <div className="flex flex-col leading-tight min-w-0">
+            <span className="text-sm font-bold truncate">{settings?.store_info.store_name || "IMS"}</span>
+            {(settings?.store_info.physical_address || settings?.store_info.city) && (
+              <span className="text-xs text-sidebar-foreground/60 truncate">
+                {[settings?.store_info.physical_address, settings?.store_info.city]
+                  .filter(Boolean)
+                  .join(', ')}
+              </span>
+            )}
+          </div>
         </Link>
 
         {/* Nav */}
