@@ -144,9 +144,32 @@ exports.getPurchaseById = async (req, res) => {
       .json({ success: false, message: 'Purchase not found' });
   }
 
-  const transformed = convertPurchaseMoney(
-    purchase.toObject({ virtuals: true })
-  );
+  // Fetch related purchase returns to calculate returned quantities per product
+  const PurchaseReturn = require('../models/PurchaseReturn');
+  const returns = await PurchaseReturn.find({ purchase_number: purchase.purchase_number }).lean();
+
+  // Calculate total returned qty per product
+  const totalReturnedByProduct = {};
+  for (const ret of returns) {
+    for (const line of ret.lines) {
+      const key = line.product_id.toString();
+      totalReturnedByProduct[key] = (totalReturnedByProduct[key] || 0) + line.qty;
+    }
+  }
+
+  // Enrich purchase lines with return info
+  const enrichedLines = purchase.lines.map(line => ({
+    ...line,
+    qty_returned: totalReturnedByProduct[line.product_id.toString()] || 0,
+    qty_net: line.qty - (totalReturnedByProduct[line.product_id.toString()] || 0),
+  }));
+
+  const purchaseObj = purchase.toObject({ virtuals: true });
+  purchaseObj.lines = enrichedLines;
+  purchaseObj.has_returns = returns.length > 0;
+  purchaseObj.total_return_count = returns.reduce((s, r) => s + r.lines.reduce((ls, l) => ls + l.qty, 0), 0);
+
+  const transformed = convertPurchaseMoney(purchaseObj);
 
   return res.json({
     success: true,
