@@ -23,6 +23,8 @@ export interface Purchase {
   inventory_movements?: string[];
   createdAt: string;
   updatedAt: string;
+  has_returns?: boolean;
+  total_return_count?: number;
 }
 
 export interface PurchasesResponse {
@@ -80,6 +82,8 @@ const normalizePurchase = (
     inventory_movements: item.inventory_movements,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    has_returns: item.has_returns,
+    total_return_count: item.total_return_count,
   };
 };
 
