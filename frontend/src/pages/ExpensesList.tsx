@@ -208,6 +208,19 @@ export default function ExpensesList() {
       return;
     }
 
+    // Validate that paid amount does not exceed total amount
+    const parsedTotal = parseFloat(String(totalAmount)) || 0;
+    const parsedPaid = parseFloat(String(paidAmount)) || 0;
+
+    if (parsedPaid > parsedTotal) {
+      toast({
+        title: "Error",
+        description: "Paid amount cannot exceed total amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (isEditingId) {
       updateMutation.mutate(isEditingId);
     } else {

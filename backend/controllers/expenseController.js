@@ -239,6 +239,8 @@ exports.updateExpense = async (req, res) => {
     });
   }
 
+  await expense.save();
+
   const transformed = convertExpenseMoney(
     expense.toObject({ virtuals: true })
   );
