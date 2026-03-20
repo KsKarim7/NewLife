@@ -86,6 +86,7 @@ interface PurchaseLineItem {
 
 export default function PurchasesList() {
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('All');
   const { period, setPeriod, customFrom, setCustomFrom, customTo, setCustomTo } = usePeriod();
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
 
@@ -128,11 +129,12 @@ export default function PurchasesList() {
 
   // Fetch purchases
   const { data: purchasesData, isLoading, isError, error } = useQuery<PurchasesResponse>({
-    queryKey: ["purchases", page, queryFrom, queryTo],
+    queryKey: ["purchases", page, statusFilter, queryFrom, queryTo],
     queryFn: () =>
       getPurchases({
         page,
         limit: 10,
+        status: statusFilter !== 'All' ? statusFilter : undefined,
         from: queryFrom || undefined,
         to: queryTo || undefined,
       }),
@@ -370,6 +372,7 @@ export default function PurchasesList() {
       const allData = await getPurchases({
         page: 1,
         limit: 9999,
+        status: statusFilter !== 'All' ? statusFilter : undefined,
         from: queryFrom || undefined,
         to: queryTo || undefined,
       });
@@ -417,7 +420,7 @@ export default function PurchasesList() {
 
   function purchaseStatusToStatusType(status: string): import("@/components/shared/StatusBadge").StatusType {
     switch (status) {
-      case "Pending":
+      case "Unpaid":
         return "confirmed";
       case "Partially Paid":
         return "partial";
@@ -489,13 +492,34 @@ export default function PurchasesList() {
         </Button>
       </div>
 
+      {/* Status Filter */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <Button
+          variant={statusFilter === 'All' ? "default" : "outline"}
+          size="sm"
+          onClick={() => { setStatusFilter('All'); setPage(1); }}
+        >
+          All
+        </Button>
+        {["Unpaid", "Partially Paid", "Paid", "Cancelled"].map(status => (
+          <Button
+            key={status}
+            variant={statusFilter === status ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setStatusFilter(status); setPage(1); }}
+          >
+            {status}
+          </Button>
+        ))}
+      </div>
+
       {/* Desktop table */}
       <div className="hidden md:block bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                {["Purchase No", "Supplier", "Product", "Category", "Net Amount", "Paid", "Due", "Actions"].map((h) => (
+                {["Purchase No", "Supplier", "Product", "Category", "Net Amount", "Paid", "Due", "Status", "Actions"].map((h) => (
                   <th key={h} className="text-left text-table-header uppercase text-muted-foreground px-4 py-3">
                     {h}
                   </th>
@@ -506,7 +530,7 @@ export default function PurchasesList() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <Skeleton className="h-4 w-20" />
                       </td>
@@ -515,7 +539,7 @@ export default function PurchasesList() {
                 ))
               ) : purchases.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                     No purchases found
                   </td>
                 </tr>
@@ -550,6 +574,9 @@ export default function PurchasesList() {
                     <td className="px-4 py-3 text-table-body text-success">{formatCurrency(toPriceNumber(p.paid_amount_paisa))}</td>
                     <td className="px-4 py-3 text-table-body text-destructive font-medium">
                       {toPriceNumber(p.due_amount_paisa) > 0 ? formatCurrency(toPriceNumber(p.due_amount_paisa)) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={purchaseStatusToStatusType(p.status ?? 'Unpaid')} />
                     </td>
                     <td className="px-4 py-3 text-table-body">
                       <div className="flex items-center gap-1">
@@ -612,6 +639,7 @@ export default function PurchasesList() {
                   <p className="font-semibold text-sm text-secondary">{p.purchase_number}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(p.date)}</p>
                 </div>
+                <StatusBadge status={purchaseStatusToStatusType(p.status ?? 'Unpaid')} />
               </div>
               <p className="text-xs text-muted-foreground mb-2">
                 {p.lines.map((l) => l.product_code).join(", ")}

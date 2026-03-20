@@ -56,10 +56,31 @@ const buildPagination = (total, page, limit) => {
 exports.getAllPurchases = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
-  const { from, to } = req.query;
+  const { from, to, status } = req.query;
 
-  const filter = { is_deleted: false };
+  let filter = { is_deleted: false };
+  let hasStatusOr = false;
+  let statusOrCondition = null;
+  let exprCondition = null;
 
+  // Build status filter
+  if (status && status !== 'All') {
+    if (status === 'Unpaid') {
+      // Match both explicit 'Unpaid' and missing status field (for old documents)
+      hasStatusOr = true;
+      statusOrCondition = {
+        $or: [
+          { status: 'Unpaid' },
+          { status: { $exists: false } },
+          { status: null }
+        ]
+      };
+    } else {
+      filter.status = status;
+    }
+  }
+
+  // Build date range filter
   if (from || to) {
     const conditions = [];
     const effectiveField = {
@@ -77,10 +98,25 @@ exports.getAllPurchases = async (req, res) => {
     }
 
     if (conditions.length === 1) {
-      filter.$expr = conditions[0];
+      exprCondition = conditions[0];
     } else if (conditions.length === 2) {
-      filter.$expr = { $and: conditions };
+      exprCondition = { $and: conditions };
     }
+  }
+
+  // Combine filters properly: if both $or and $expr exist, use explicit $and
+  if (hasStatusOr && exprCondition) {
+    filter = {
+      is_deleted: false,
+      $and: [
+        statusOrCondition,
+        { $expr: exprCondition }
+      ]
+    };
+  } else if (hasStatusOr) {
+    filter = { ...filter, ...statusOrCondition };
+  } else if (exprCondition) {
+    filter.$expr = exprCondition;
   }
 
   const total = await Purchase.countDocuments(filter);
@@ -319,7 +355,7 @@ exports.createPurchase = async (req, res) => {
     }
 
     // Determine initial status based on payment
-    let status = 'Pending';
+    let status = 'Unpaid';
     if (due_amount_paisa <= 0) {
       status = 'Paid';
     } else if (paid_amount_paisa > 0) {
@@ -404,6 +440,8 @@ exports.addPayment = async (req, res) => {
     purchase.status = 'Paid';
   } else if (purchase.paid_amount_paisa > 0) {
     purchase.status = 'Partially Paid';
+  } else {
+    purchase.status = 'Unpaid';
   }
 
   await purchase.save();

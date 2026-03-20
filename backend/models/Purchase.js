@@ -53,11 +53,13 @@ const purchaseSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'Partially Paid', 'Paid', 'Cancelled'],
-      default: 'Pending',
+      enum: ['Unpaid', 'Partially Paid', 'Paid', 'Cancelled'],
+      default: 'Unpaid',
     },
   },
   { timestamps: true }
 );
+
+purchaseSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Purchase', purchaseSchema);

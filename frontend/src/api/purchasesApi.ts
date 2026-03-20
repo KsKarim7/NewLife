@@ -48,6 +48,7 @@ export interface PurchasesQueryParams {
   limit?: number;
   from?: string;
   to?: string;
+  status?: string;
 }
 
 export interface CreatePurchasePayload {
