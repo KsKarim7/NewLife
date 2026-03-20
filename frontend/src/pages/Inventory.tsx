@@ -163,7 +163,7 @@ export default function Inventory() {
   const productsTotal = productsPagination?.total ?? products.length;
   const productsLimit = productsPagination?.limit ?? 10;
   const productsPage = productsPagination?.page ?? page;
-  const productsTotalPages = productsPagination?.totalPages ?? 1;
+  const productsTotalPages = productsPagination?.pages ?? 1;
 
   const productsRangeText = useMemo(() => {
     if (!productsTotal) return "Showing 0 results";

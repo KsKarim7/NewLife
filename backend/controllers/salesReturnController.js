@@ -218,6 +218,37 @@ exports.createSalesReturn = async (req, res) => {
           message: `Cannot return order ${original_order_ref} — status is ${originalOrder.status}. Only Paid or Partially Paid orders are returnable`,
         });
       }
+
+      // Validation 3: Check customer name matches the original order
+      if (originalOrder) {
+        let returnCustomerName = null;
+
+        if (customer_id) {
+          // Resolve name from DB
+          const customerQuery = Customer.findOne({ _id: customer_id, is_deleted: false });
+          if (useTransaction) customerQuery.session(session);
+          const foundCustomer = await customerQuery;
+          if (foundCustomer) {
+            returnCustomerName = foundCustomer.name;
+          }
+        } else if (customer_name) {
+          returnCustomerName = customer_name;
+        }
+
+        if (returnCustomerName) {
+          const originalName = (originalOrder.customer?.name || '').trim().toLowerCase();
+          const providedName = returnCustomerName.trim().toLowerCase();
+
+          if (originalName && providedName && originalName !== providedName) {
+            if (useTransaction) await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
+              success: false,
+              message: `Customer name does not match the original order. Expected "${originalOrder.customer.name}" but got "${returnCustomerName}".`,
+            });
+          }
+        }
+      }
     }
 
     // Pre-fetch all products for the return request
@@ -235,7 +266,7 @@ exports.createSalesReturn = async (req, res) => {
       }
     }
 
-    // Validation 3, 4, 5: For each line, validate against order
+    // Validation 4, 5, 6: For each line, validate against order
     for (const line of lines) {
       const { product_id, qty } = line;
       const quantity = Number(qty);
@@ -265,7 +296,7 @@ exports.createSalesReturn = async (req, res) => {
 
       const product = productsMap[product_id.toString()];
 
-      // Validation 3: Product must be in original order
+      // Validation 4: Product must be in original order
       if (originalOrder) {
         const orderLine = originalOrder.lines.find(l => l.product_id.toString() === product_id.toString());
         if (!orderLine) {
@@ -279,7 +310,7 @@ exports.createSalesReturn = async (req, res) => {
           });
         }
 
-        // Validation 4: Return quantity cannot exceed ordered quantity
+        // Validation 5: Return quantity cannot exceed ordered quantity
         if (quantity > orderLine.qty) {
           if (useTransaction) {
             await session.abortTransaction();
@@ -291,7 +322,7 @@ exports.createSalesReturn = async (req, res) => {
           });
         }
 
-        // Validation 5: Check total returns (including this one) don't exceed ordered quantity
+        // Validation 6: Check total returns (including this one) don't exceed ordered quantity
         const previousReturnsQuery = SalesReturn.find({
           original_order_ref,
           'lines.product_id': new mongoose.Types.ObjectId(product_id),

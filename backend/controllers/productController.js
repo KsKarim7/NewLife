@@ -53,7 +53,7 @@ exports.getAllProducts = async (req, res) => {
     .populate('category_id', 'name slug')
     .skip((page - 1) * limit)
     .limit(limit)
-    .sort({ name: 1 });
+    .sort({ createdAt: 1 });
 
   const transformed = products.map((doc) =>
     convertMoneyFields(doc.toObject({ virtuals: true }))
