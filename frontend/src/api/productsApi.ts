@@ -8,7 +8,7 @@ export interface ProductCategoryRef {
 export interface Product {
   _id: string;
   name: string;
-  product_code: string;
+  product_code?: string;
   category?: ProductCategoryRef | null;
   category_name?: string;
   unit: string;
@@ -141,7 +141,7 @@ export const getProducts = async (params: ProductsQueryParams): Promise<Products
 
 export interface ProductPayload {
   name: string;
-  product_code: string;
+  product_code?: string;
   category_id: string;
   unit: string;
   selling_price: string;

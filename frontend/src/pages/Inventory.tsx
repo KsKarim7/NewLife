@@ -72,7 +72,6 @@ type CategoryMutationError = {
 
 type ProductFormValues = {
   name: string;
-  product_code: string;
   category_id: string;
   stock_qty?: number;
   selling_price: string;
@@ -177,7 +176,6 @@ export default function Inventory() {
   const productForm = useForm<ProductFormValues>({
     defaultValues: {
       name: "",
-      product_code: "",
       category_id: "",
       stock_qty: 0,
       selling_price: "",
@@ -199,7 +197,6 @@ export default function Inventory() {
     setEditingProduct(null);
     productForm.reset({
       name: "",
-      product_code: "",
       category_id: activeCategory ?? "",
       stock_qty: 0,
       selling_price: "",
@@ -216,7 +213,6 @@ export default function Inventory() {
     setEditingProduct(product);
     productForm.reset({
       name: product.name,
-      product_code: product.product_code,
       category_id: product.category?._id ?? "",
       stock_qty: product.stock_qty,
       selling_price: product.selling_price_taka,
@@ -432,7 +428,6 @@ export default function Inventory() {
   const handleSubmitProduct = (values: ProductFormValues) => {
     const payload: ProductPayload = {
       name: values.name,
-      product_code: values.product_code,
       category_id: values.category_id,
       unit: "pcs",
       selling_price: values.selling_price,
@@ -470,7 +465,7 @@ export default function Inventory() {
   return (
     <PageLayout
       title="Inventory"
-      searchPlaceholder="Search products by name or code..."
+      searchPlaceholder="Search products by name..."
       showPeriodFilter={false}
       searchValue={search}
       onSearchChange={(value) => setSearch(value)}
@@ -609,7 +604,6 @@ export default function Inventory() {
                   <td className="px-4 py-3">
                     <div>
                       <p className="text-table-body font-medium text-card-foreground">{product.name}</p>
-                      <p className="text-badge text-muted-foreground">{product.product_code}</p>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-table-body text-muted-foreground">
@@ -716,7 +710,6 @@ export default function Inventory() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate text-card-foreground">{product.name}</p>
-              <p className="text-xs text-muted-foreground">{product.product_code}</p>
               <p className="text-xs text-muted-foreground">{product.category_name}</p>
               <div className="flex items-center justify-between mt-1">
                 <StatusBadge status={getStockStatus(product.stock_qty)} label={`${product.stock_qty} pcs`} />
@@ -771,19 +764,6 @@ export default function Inventory() {
                       <FormLabel>Name</FormLabel>
                       <FormControl>
                         <Input placeholder="Product name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={productForm.control}
-                  name="product_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Product Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. ELC-001" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

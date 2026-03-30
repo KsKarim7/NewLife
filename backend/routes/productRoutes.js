@@ -18,9 +18,6 @@ router.post(
   '/',
   protect,
   [
-    body('product_code')
-      .notEmpty()
-      .withMessage('Product code is required'),
     body('name').notEmpty().withMessage('Name is required'),
     body('category_id').notEmpty().withMessage('Category is required'),
     body('unit').notEmpty().withMessage('Unit is required'),

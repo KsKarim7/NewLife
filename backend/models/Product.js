@@ -5,7 +5,7 @@ const productSchema = new mongoose.Schema(
   {
     product_code: {
       type: String,
-      required: [true, 'Product code is required'],
+      default: '',
     },
     name: {
       type: String,
@@ -68,11 +68,6 @@ productSchema.virtual('available').get(function () {
   return Math.max(0, (this.on_hand || 0) - (this.reserved || 0));
 });
 
-productSchema.index(
-  { product_code: 1 },
-  { unique: true, partialFilterExpression: { is_deleted: false } }
-);
-
-productSchema.index({ name: 'text', description: 'text', product_code: 'text' });
+productSchema.index({ name: 'text', description: 'text' });
 
 module.exports = mongoose.model('Product', productSchema);

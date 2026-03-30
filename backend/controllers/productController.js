@@ -123,18 +123,6 @@ exports.createProduct = async (req, res) => {
     stock_qty,
   } = req.body;
 
-  const existing = await Product.findOne({
-    product_code,
-    is_deleted: false,
-  });
-
-  if (existing) {
-    return res.status(409).json({
-      success: false,
-      message: 'Product code already exists',
-    });
-  }
-
   const sellingPaisa = Math.round(parseFloat(selling_price) * 100);
   const buyingPaisa = Math.round(parseFloat(buying_price) * 100);
   const initialStock = parseInt(stock_qty) || 0;
