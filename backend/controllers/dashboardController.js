@@ -105,11 +105,11 @@ exports.getDashboardStats = async (req, res) => {
       {
         $match: {
           effective_date: { $gte: getStartOfToday(), $lte: getEndOfToday() },
-          status: { $in: ['Paid', 'Partially Paid'] },
+          status: 'Paid',
           is_deleted: false,
         },
       },
-      { $group: { _id: null, total: { $sum: '$total_paisa' } } },
+      { $group: { _id: null, total: { $sum: { $cond: [{ $eq: ['$status', 'Paid'] }, '$total_paisa', 0] } } } },
     ])
       .then((r) => {
         console.log('Today sales agg result:', r);
@@ -207,7 +207,7 @@ exports.getDashboardStats = async (req, res) => {
           _id: {
             $dateToString: { format: '%Y-%m-%d', date: '$effective_date' },
           },
-          total: { $sum: '$total_paisa' },
+          total: { $sum: { $cond: [{ $eq: ['$status', 'Paid'] }, '$total_paisa', 0] } },
         },
       },
       { $sort: { _id: 1 } },
@@ -233,7 +233,7 @@ exports.getDashboardStats = async (req, res) => {
           _id: {
             $dateToString: { format: '%Y-%m-%d', date: '$effective_date' },
           },
-          total: { $sum: '$total_paisa' },
+          total: { $sum: { $cond: [{ $eq: ['$status', 'Paid'] }, '$total_paisa', 0] } },
         },
       },
       { $sort: { _id: 1 } },
@@ -274,6 +274,16 @@ exports.getDashboardStats = async (req, res) => {
 
     const topProductsAgg = await InventoryTransaction.aggregate([
       { $match: { type: 'sale_out' } },
+      {
+        $lookup: {
+          from: 'orders',
+          localField: 'source.doc_number',
+          foreignField: 'order_number',
+          as: 'order',
+        },
+      },
+      { $unwind: { path: '$order', preserveNullAndEmptyArrays: true } },
+      { $match: { 'order.status': 'Paid' } },
       {
         $group: {
           _id: '$product_id',

@@ -138,21 +138,43 @@ const getExcelConfig = (module, data) => {
   switch (module) {
     case 'sales': {
       const orders = data.orders || [];
+      const orderRows = orders.map((o) => ({
+        order_number: o.order_number,
+        customer_name: o.customer?.name || '-',
+        order_total: paisaToTakaString(o.total_paisa),
+        received: paisaToTakaString(o.amount_received_paisa),
+        due: paisaToTakaString(Math.max(0, o.total_paisa - o.amount_received_paisa)),
+        status: o.status,
+        date: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : '-',
+      }));
+      
+      // Calculate total revenue: sum of total_paisa for 'Paid' orders only
+      const totalRevenueFromPaidOrders = orders
+        .filter(o => o.status === 'Paid')
+        .reduce((sum, o) => sum + (Number(o.total_paisa) || 0), 0);
+      
+      // Add summary row
+      orderRows.push({
+        order_number: 'Total Revenue (Paid Orders)',
+        customer_name: '',
+        order_total: paisaToTakaString(totalRevenueFromPaidOrders),
+        received: '',
+        due: '',
+        status: '',
+        date: '',
+      });
+      
       return {
         columns: [
           { header: 'Order #', key: 'order_number', width: 14 },
           { header: 'Customer', key: 'customer_name', width: 20 },
-          { header: 'Total (৳)', key: 'total', width: 14 },
+          { header: 'Order Total', key: 'order_total', width: 14 },
+          { header: 'Received', key: 'received', width: 14 },
+          { header: 'Due', key: 'due', width: 14 },
           { header: 'Status', key: 'status', width: 14 },
           { header: 'Date', key: 'date', width: 12 },
         ],
-        rows: orders.map((o) => ({
-          order_number: o.order_number,
-          customer_name: o.customer?.name || '-',
-          total: paisaToTakaString(o.total_paisa),
-          status: o.status,
-          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : '-',
-        })),
+        rows: orderRows,
         sheetName: 'Sales',
       };
     }

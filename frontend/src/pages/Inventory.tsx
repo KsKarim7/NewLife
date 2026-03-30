@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/auth/AuthContext";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StatusBadge, StatusType } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/utils/currency";
@@ -98,6 +99,7 @@ function getStockStatus(stock: number): StatusType {
 }
 
 export default function Inventory() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -537,13 +539,15 @@ export default function Inventory() {
         <p className="text-sm text-muted-foreground">
           {isProductsFetching ? "Updating products..." : productsRangeText}
         </p>
-        <Button
-          className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90 ml-3"
-          type="button"
-          onClick={handleOpenProductSheetForCreate}
-        >
-          <Plus className="h-4 w-4 mr-1" /> Add Product
-        </Button>
+        {user?.role !== 'staff' && (
+          <Button
+            className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90 ml-3"
+            type="button"
+            onClick={handleOpenProductSheetForCreate}
+          >
+            <Plus className="h-4 w-4 mr-1" /> Add Product
+          </Button>
+        )}
       </div>
 
       {/* Desktop Product Table */}

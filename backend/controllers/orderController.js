@@ -161,7 +161,7 @@ exports.getAllOrders = async (req, res) => {
     {
       $group: {
         _id: null,
-        total_revenue_paisa: { $sum: '$total_paisa' },
+        total_revenue_paisa: { $sum: { $cond: [{ $eq: ['$status', 'Paid'] }, '$total_paisa', 0] } },
         total_due_paisa: {
           $sum: {
             $cond: [

@@ -232,7 +232,7 @@ export default function StockMovementLog() {
         </div>
         {/* Mobile: filter + export in one row */}
         <div className="md:hidden flex items-center gap-2 w-full">
-          <Select defaultValue="all">
+          <Select value={reasonFilter} onValueChange={(value) => { setReasonFilter(value); setPage(1); }}>
             <SelectTrigger className="flex-1 h-9 text-sm">
               <SelectValue />
             </SelectTrigger>

@@ -93,6 +93,12 @@ exports.getProductById = async (req, res) => {
 };
 
 exports.createProduct = async (req, res) => {
+  if (req.user.role === 'staff') {
+    const error = new Error('Staff accounts are not authorized to add products');
+    error.statusCode = 403;
+    throw error;
+  }
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({

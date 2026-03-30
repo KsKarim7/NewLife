@@ -81,6 +81,14 @@ interface AxiosError {
   message?: string;
 }
 
+interface OrderLineType {
+  id: string;
+  product_id: string;
+  qty: number | '';
+  unit_price: string;
+  vat_percent: number;
+}
+
 const paisaToTaka = (paisa: number) => {
   return paisa / 100;
 };
@@ -91,6 +99,169 @@ const toPriceNumber = (value: string | number): number => {
   if (Number.isNaN(num)) return 0;
   return num;
 };
+
+// OrderLineRow Component — Each row manages its own state independently
+interface OrderLineRowProps {
+  line: OrderLineType;
+  index: number;
+  products: Product[];
+  onUpdate: (index: number, field: string, value: any) => void;
+  onRemove: (index: number) => void;
+  onSelectProduct: (index: number, productId: string) => void;
+  totalLines: number;
+}
+
+function OrderLineRow({
+  line,
+  index,
+  products,
+  onUpdate,
+  onRemove,
+  onSelectProduct,
+  totalLines,
+}: OrderLineRowProps) {
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.product_code?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const validateQty = (qty: number | '') => {
+    if (qty === '' || qty === undefined) {
+      return 'Quantity is required';
+    }
+    const numQty = Number(qty);
+    if (numQty < 1) {
+      return 'Quantity must be at least 1';
+    }
+    return '';
+  };
+
+  return (
+    <div className="bg-muted/30 p-3 rounded-lg mb-3 space-y-2">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-muted-foreground">Item {index + 1}</span>
+        {totalLines > 1 && (
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="p-1 hover:bg-destructive/10 rounded"
+          >
+            <X className="h-4 w-4 text-destructive" />
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium">Product *</label>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md bg-background hover:bg-muted transition-colors h-8"
+            >
+              <span className={line.product_id ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'}>
+                {line.product_id
+                  ? (() => {
+                      const product = products.find(p => p._id === line.product_id);
+                      return product ? `${product.name} (${product.product_code})` : 'Select product';
+                    })()
+                  : 'Search product...'}
+              </span>
+              <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0" align="start">
+            <Command>
+              <CommandInput
+                placeholder="Type product name or code..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
+              <CommandList className="max-h-48 overflow-y-auto">
+                <CommandEmpty>No products found.</CommandEmpty>
+                {filteredProducts.map((product) => (
+                  <CommandItem
+                    key={product._id}
+                    value={product.name}
+                    onSelect={() => {
+                      onSelectProduct(index, product._id);
+                      setPopoverOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    <div className="flex flex-col w-full">
+                      <span className="text-sm font-medium">{product.name}</span>
+                      <span className="text-xs text-muted-foreground">{product.product_code}</span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium">Qty *</label>
+          <Input
+            type="number"
+            min="1"
+            value={line.qty === '' ? '' : line.qty}
+            onChange={(e) => onUpdate(index, "qty", e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 0))}
+            className="h-8 text-sm"
+            placeholder="Qty"
+          />
+          {validateQty(line.qty) && (
+            <p className="text-xs text-destructive">{validateQty(line.qty)}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium">Unit Price (Tk) *</label>
+          <Input
+            type="number"
+            step="0.01"
+            value={line.unit_price}
+            onChange={(e) => onUpdate(index, "unit_price", e.target.value)}
+            className="h-8 text-sm"
+            placeholder="Price"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium">VAT %</label>
+        <Input
+          type="number"
+          min="0"
+          step="1"
+          value={line.vat_percent}
+          onChange={(e) => onUpdate(index, "vat_percent", parseInt(e.target.value) || 0)}
+          className="h-8 text-sm"
+          placeholder="VAT %"
+        />
+      </div>
+
+      {/* Line Total Preview */}
+      {(() => {
+        const qty = parseFloat(String(line.qty)) || 0;
+        const price = parseFloat(line.unit_price) || 0;
+        const lineTotal = qty * price;
+        return lineTotal > 0 ? (
+          <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">
+            <span className="text-sm text-muted-foreground">Line Total</span>
+            <span className="text-sm font-semibold text-foreground">
+              {formatCurrency(lineTotal)}
+            </span>
+          </div>
+        ) : null;
+      })()}
+    </div>
+  );
+}
 
 export default function OrdersList() {
   const [page, setPage] = useState(1);
@@ -103,20 +274,17 @@ export default function OrdersList() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [orderLines, setOrderLines] = useState<Array<{
+    id: string;
     product_id: string;
-    qty: number;
+    qty: number | '';
     unit_price: string;
     vat_percent: number;
   }>>([
-    { product_id: "", qty: 1, unit_price: "", vat_percent: 0 }
+    { id: crypto.randomUUID(), product_id: "", qty: '', unit_price: "", vat_percent: 0 }
   ]);
   const [amountReceived, setAmountReceived] = useState("");
 
-  // Product search state for combobox
-  const [productSearch, setProductSearch] = useState('');
-  const [productPopoverOpen, setProductPopoverOpen] = useState(false);
-
-  // Payment dialog state
+  const queryClient = useQueryClient();
   const [payingOrder, setPayingOrder] = useState<Order | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
@@ -134,7 +302,6 @@ export default function OrdersList() {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printTargetOrder, setPrintTargetOrder] = useState<Order | null>(null);
 
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const getDateRange = () => {
@@ -290,7 +457,7 @@ export default function OrdersList() {
   const openAddSheet = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setOrderLines([{ product_id: "", qty: 1, unit_price: "", vat_percent: 0 }]);
+    setOrderLines([{ id: crypto.randomUUID(), product_id: "", qty: '', unit_price: "", vat_percent: 0 }]);
     setAmountReceived("");
     setIsSheetOpen(true);
   };
@@ -302,45 +469,49 @@ export default function OrdersList() {
   const resetFormFields = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setOrderLines([{ product_id: "", qty: 1, unit_price: "", vat_percent: 0 }]);
+    setOrderLines([{ id: crypto.randomUUID(), product_id: "", qty: '', unit_price: "", vat_percent: 0 }]);
     setAmountReceived("");
-    setProductSearch("");
-    setProductPopoverOpen(false);
   };
 
   const handleAddOrderLine = () => {
-    setOrderLines([...orderLines, { product_id: "", qty: 1, unit_price: "", vat_percent: 0 }]);
+    setOrderLines(prev => [...prev, { id: crypto.randomUUID(), product_id: "", qty: '', unit_price: "", vat_percent: 0 }]);
   };
 
   const handleRemoveOrderLine = (index: number) => {
-    setOrderLines(orderLines.filter((_, i) => i !== index));
+    setOrderLines(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleOrderLineChange = (index: number, field: string, value: string | number) => {
-    const newLines = [...orderLines];
-    newLines[index] = { ...newLines[index], [field]: value };
-    setOrderLines(newLines);
+    setOrderLines(prev => {
+      const newLines = [...prev];
+      newLines[index] = { ...newLines[index], [field]: value };
+      return newLines;
+    });
   };
 
   const handleProductSelect = (index: number, productId: string) => {
     const selectedProduct = (productsData?.products ?? []).find(p => p._id === productId);
-    const newLines = [...orderLines];
-    newLines[index] = {
-      ...newLines[index],
-      product_id: productId,
-      unit_price: selectedProduct?.selling_price_taka ?? "",
-    };
-    setOrderLines(newLines);
-    // Reset search and close popover after selection
-    setProductSearch("");
-    setProductPopoverOpen(false);
+    setOrderLines(prev => {
+      const newLines = [...prev];
+      newLines[index] = {
+        ...newLines[index],
+        product_id: productId,
+        unit_price: selectedProduct?.selling_price_taka ?? "",
+      };
+      return newLines;
+    });
   };
 
-  // Filter products for combobox based on search
-  const filteredProducts = (productsData?.products ?? []).filter(p =>
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.product_code?.toLowerCase().includes(productSearch.toLowerCase())
-  );
+  const validateQty = (qty: number | '') => {
+    if (qty === '' || qty === undefined) {
+      return 'Quantity is required';
+    }
+    const numQty = Number(qty);
+    if (numQty < 1) {
+      return 'Quantity must be at least 1';
+    }
+    return '';
+  };
 
   const handleOpenPaymentDialog = (order: Order) => {
     const amountDue = toPriceNumber(order.amount_due_paisa);
@@ -502,12 +673,26 @@ export default function OrdersList() {
       return;
     }
 
+    // Validate quantity for all line items
+    const invalidQtyLine = orderLines.find(l => {
+      const qtyError = validateQty(l.qty);
+      return !!qtyError;
+    });
+    if (invalidQtyLine) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a valid quantity (minimum 1) for all items before confirming the order",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload: CreateOrderPayload = {
       customer_name: customerName.trim(),
       customer_phone: customerPhone.trim(),
       lines: orderLines.map(line => ({
         product_id: line.product_id,
-        qty: line.qty,
+        qty: line.qty as number,
         unit_price: line.unit_price,
         vat_percent: line.vat_percent,
       })),
@@ -863,119 +1048,16 @@ export default function OrdersList() {
               </div>
 
               {orderLines.map((line, index) => (
-                <div key={index} className="bg-muted/30 p-3 rounded-lg mb-3 space-y-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-muted-foreground">Item {index + 1}</span>
-                    {orderLines.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOrderLine(index)}
-                        className="p-1 hover:bg-destructive/10 rounded"
-                      >
-                        <X className="h-4 w-4 text-destructive" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium">Product *</label>
-                    <Popover open={productPopoverOpen} onOpenChange={setProductPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="w-full flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md bg-background hover:bg-muted transition-colors h-8"
-                        >
-                          <span className={line.product_id ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'}>
-                            {line.product_id
-                              ? (() => {
-                                  const product = (productsData?.products ?? []).find(p => p._id === line.product_id);
-                                  return product ? `${product.name} (${product.product_code})` : 'Select product';
-                                })()
-                              : 'Search product...'}
-                          </span>
-                          <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
-                        <Command>
-                          <CommandInput
-                            placeholder="Type product name or code..."
-                            value={productSearch}
-                            onValueChange={setProductSearch}
-                          />
-                          <CommandList className="max-h-48 overflow-y-auto">
-                            <CommandEmpty>No products found.</CommandEmpty>
-                            {filteredProducts.map((product) => (
-                              <CommandItem
-                                key={product._id}
-                                value={product.name}
-                                onSelect={() => handleProductSelect(index, product._id)}
-                              >
-                                <div className="flex flex-col w-full">
-                                  <span className="text-sm font-medium">{product.name}</span>
-                                  <span className="text-xs text-muted-foreground">{product.product_code}</span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium">Qty *</label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={line.qty}
-                        onChange={(e) => handleOrderLineChange(index, "qty", parseInt(e.target.value) || 1)}
-                        className="h-8 text-sm"
-                        placeholder="Qty"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium">Unit Price (Tk) *</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={line.unit_price}
-                        onChange={(e) => handleOrderLineChange(index, "unit_price", e.target.value)}
-                        className="h-8 text-sm"
-                        placeholder="Price"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium">VAT %</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={line.vat_percent}
-                      onChange={(e) => handleOrderLineChange(index, "vat_percent", parseInt(e.target.value) || 0)}
-                      className="h-8 text-sm"
-                      placeholder="VAT %"
-                    />
-                  </div>
-
-                  {/* Line Total Preview */}
-                  {(() => {
-                    const qty = parseFloat(String(line.qty)) || 0;
-                    const price = parseFloat(line.unit_price) || 0;
-                    const lineTotal = qty * price;
-                    return lineTotal > 0 ? (
-                      <div className="flex items-center justify-between px-3 py-2 rounded-md bg-muted border border-border">
-                        <span className="text-sm text-muted-foreground">Line Total</span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {formatCurrency(lineTotal)}
-                        </span>
-                      </div>
-                    ) : null;
-                  })()}
-                </div>
+                <OrderLineRow
+                  key={line.id}
+                  line={line}
+                  index={index}
+                  products={productsData?.products ?? []}
+                  onUpdate={handleOrderLineChange}
+                  onRemove={handleRemoveOrderLine}
+                  onSelectProduct={handleProductSelect}
+                  totalLines={orderLines.length}
+                />
               ))}
 
               {/* Order Subtotal Preview */}
@@ -1248,7 +1330,7 @@ export default function OrdersList() {
           if (!open) setPrintTargetOrder(null);
         }}
       >
-        <AlertDialogContent className="max-w-xs rounded-2xl p-0 overflow-hidden">
+        <AlertDialogContent className="w-full max-w-sm rounded-2xl p-0 overflow-hidden">
           <div className="px-6 pt-6 pb-2">
             <AlertDialogTitle className="text-lg font-semibold text-center">
               Print Receipt

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Package, ShoppingCart, Undo2, Truck,
+  LayoutDashboard, Package, Users, ShoppingCart, Undo2, Truck,
   RefreshCw, Wallet, Activity, BarChart3, Settings, LogOut, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { getSettings } from "@/api/settingsApi";
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Customers", url: "/customers", icon: Users },
   { title: "Orders & Sales", url: "/orders", icon: ShoppingCart },
   { title: "Sales Returns", url: "/sales-returns", icon: Undo2 },
   { title: "Purchases", url: "/purchases", icon: Truck },
