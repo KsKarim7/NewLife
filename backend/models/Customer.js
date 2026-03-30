@@ -16,6 +16,14 @@ const customerSchema = new mongoose.Schema(
     address: {
       type: String,
     },
+    debit_paisa: {
+      type: Number,
+      default: 0,
+    },
+    credit_paisa: {
+      type: Number,
+      default: 0,
+    },
     is_deleted: {
       type: Boolean,
       default: false,

@@ -7,6 +7,7 @@ const {
   getCustomerOrders,
   createCustomer,
   updateCustomer,
+  updateCustomerLedger,
   deleteCustomer,
 } = require('../controllers/customerController');
 
@@ -35,6 +36,8 @@ router.put(
   ],
   updateCustomer
 );
+
+router.patch('/:id/ledger', protect, updateCustomerLedger);
 
 router.delete('/:id', protect, deleteCustomer);
 

@@ -6,6 +6,8 @@ export interface Customer {
   phone: string;
   shop_name?: string;
   address?: string;
+  debit_paisa?: number;
+  credit_paisa?: number;
   createdAt?: string;
   created_at?: string;
 }
@@ -80,6 +82,8 @@ export interface CustomerPayload {
   phone: string;
   shop_name?: string;
   address?: string;
+  debit?: number;
+  credit?: number;
 }
 
 export const createCustomer = async (data: CustomerPayload): Promise<Customer> => {
@@ -108,5 +112,20 @@ export const deleteCustomer = async (id: string): Promise<void> => {
   if (!response.data?.success) {
     throw new Error(response.data?.message || "Failed to delete customer");
   }
+};
+
+export interface LedgerPayload {
+  debit?: number;
+  credit?: number;
+}
+
+export const updateCustomerLedger = async (id: string, data: LedgerPayload): Promise<Customer> => {
+  const response = await axiosClient.patch(`/customers/${id}/ledger`, data);
+
+  if (!response.data?.success) {
+    throw new Error(response.data?.message || "Failed to update customer ledger");
+  }
+
+  return response.data.data?.customer ?? response.data.data;
 };
 

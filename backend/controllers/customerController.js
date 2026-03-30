@@ -94,9 +94,20 @@ exports.createCustomer = async (req, res) => {
     });
   }
 
-  const { name, phone, shop_name, address } = req.body;
+  const { name, phone, shop_name, address, debit, credit } = req.body;
 
-  const customer = await Customer.create({ name, phone, shop_name, address });
+  // Convert Taka decimal to paisa if provided
+  const debit_paisa = debit ? Math.round(parseFloat(debit) * 100) : 0;
+  const credit_paisa = credit ? Math.round(parseFloat(credit) * 100) : 0;
+
+  const customer = await Customer.create({
+    name,
+    phone,
+    shop_name,
+    address,
+    debit_paisa,
+    credit_paisa,
+  });
 
   return res.status(201).json({
     success: true,
@@ -115,7 +126,7 @@ exports.updateCustomer = async (req, res) => {
       .json({ success: false, message: 'Customer not found' });
   }
 
-  const { name, phone, shop_name, address } = req.body;
+  const { name, phone, shop_name, address, debit, credit } = req.body;
 
   if (typeof name !== 'undefined') {
     customer.name = name;
@@ -128,6 +139,40 @@ exports.updateCustomer = async (req, res) => {
   }
   if (typeof address !== 'undefined') {
     customer.address = address;
+  }
+  if (typeof debit !== 'undefined') {
+    customer.debit_paisa = Math.round(parseFloat(debit) * 100);
+  }
+  if (typeof credit !== 'undefined') {
+    customer.credit_paisa = Math.round(parseFloat(credit) * 100);
+  }
+
+  await customer.save();
+
+  return res.json({
+    success: true,
+    data: { customer },
+  });
+};
+
+exports.updateCustomerLedger = async (req, res) => {
+  const { id } = req.params;
+
+  const customer = await Customer.findOne({ _id: id, is_deleted: false });
+
+  if (!customer) {
+    return res
+      .status(404)
+      .json({ success: false, message: 'Customer not found' });
+  }
+
+  const { debit, credit } = req.body;
+
+  if (typeof debit !== 'undefined') {
+    customer.debit_paisa = Math.round(parseFloat(debit) * 100);
+  }
+  if (typeof credit !== 'undefined') {
+    customer.credit_paisa = Math.round(parseFloat(credit) * 100);
   }
 
   await customer.save();

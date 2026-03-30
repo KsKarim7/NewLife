@@ -3,8 +3,9 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/utils/formatDate";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency, paisaToTaka } from "@/utils/currency";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +14,14 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +39,7 @@ import {
   createCustomer,
   getCustomers,
   updateCustomer,
+  updateCustomerLedger,
   deleteCustomer,
 } from "@/api/customersApi";
 
@@ -43,6 +53,12 @@ export default function CustomersList() {
   const [phone, setPhone] = useState("");
   const [shopName, setShopName] = useState("");
   const [address, setAddress] = useState("");
+  const [debit, setDebit] = useState("");
+  const [credit, setCredit] = useState("");
+  const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
+  const [ledgerCustomer, setLedgerCustomer] = useState<Customer | null>(null);
+  const [ledgerDebit, setLedgerDebit] = useState("");
+  const [ledgerCredit, setLedgerCredit] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
@@ -92,6 +108,8 @@ export default function CustomersList() {
     setPhone("");
     setShopName("");
     setAddress("");
+    setDebit("");
+    setCredit("");
   };
 
   const openAddSheet = () => {
@@ -106,6 +124,8 @@ export default function CustomersList() {
     setPhone(customer.phone);
     setShopName(customer.shop_name ?? "");
     setAddress(customer.address ?? "");
+    setDebit(customer.debit_paisa ? (customer.debit_paisa / 100).toFixed(2) : "0.00");
+    setCredit(customer.credit_paisa ? (customer.credit_paisa / 100).toFixed(2) : "0.00");
     setIsSheetOpen(true);
   };
 
@@ -165,6 +185,26 @@ export default function CustomersList() {
     },
   });
 
+  const ledgerMutation = useMutation({
+    mutationFn: ({ id, debit, credit }: { id: string; debit?: number; credit?: number }) =>
+      updateCustomerLedger(id, { debit, credit }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      toast({ title: "Ledger updated" });
+      setIsLedgerDialogOpen(false);
+      setLedgerCustomer(null);
+      setLedgerDebit("");
+      setLedgerCredit("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update ledger",
+        description: error?.message ?? "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = () => {
     if (!name.trim() || !phone.trim()) return;
 
@@ -173,6 +213,8 @@ export default function CustomersList() {
       phone: phone.trim(),
       shop_name: shopName.trim() || undefined,
       address: address.trim() || undefined,
+      debit: debit ? parseFloat(debit) : undefined,
+      credit: credit ? parseFloat(credit) : undefined,
     };
 
     if (editingCustomer) {
@@ -191,6 +233,26 @@ export default function CustomersList() {
     if (customerToDelete) {
       deleteCustomerMutation.mutate(customerToDelete._id);
     }
+  };
+
+  const openLedgerDialog = (customer: Customer) => {
+    setLedgerCustomer(customer);
+    setLedgerDebit(customer.debit_paisa ? (customer.debit_paisa / 100).toFixed(2) : "0.00");
+    setLedgerCredit(customer.credit_paisa ? (customer.credit_paisa / 100).toFixed(2) : "0.00");
+    setIsLedgerDialogOpen(true);
+  };
+
+  const handleSaveLedger = () => {
+    if (!ledgerCustomer) return;
+
+    const debitValue = ledgerDebit ? parseFloat(ledgerDebit) : undefined;
+    const creditValue = ledgerCredit ? parseFloat(ledgerCredit) : undefined;
+
+    ledgerMutation.mutate({
+      id: ledgerCustomer._id,
+      debit: debitValue,
+      credit: creditValue,
+    });
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending || deleteCustomerMutation.isPending;
@@ -218,7 +280,7 @@ export default function CustomersList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                {["Name", "Phone", "Shop Name", "Address", "Created", "Actions"].map((h) => (
+                {["Name", "Phone", "Shop Name", "Address", "Debit", "Credit", "Created", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="text-left text-table-header uppercase text-muted-foreground px-4 py-3"
@@ -231,14 +293,14 @@ export default function CustomersList() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-6 text-center text-sm text-muted-foreground">
                     Loading customers...
                   </td>
                 </tr>
               )}
               {!isLoading && customers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-6 text-center text-sm text-muted-foreground">
                     No customers found.
                   </td>
                 </tr>
@@ -266,11 +328,25 @@ export default function CustomersList() {
                       <td className="px-4 py-3 text-table-body text-muted-foreground">
                         {customer.address || "—"}
                       </td>
+                      <td className="px-4 py-3 text-table-body font-medium text-red-600">
+                        {formatCurrency(paisaToTaka(customer.debit_paisa ?? 0))}
+                      </td>
+                      <td className="px-4 py-3 text-table-body font-medium text-green-600">
+                        {formatCurrency(paisaToTaka(customer.credit_paisa ?? 0))}
+                      </td>
                       <td className="px-4 py-3 text-table-body text-muted-foreground">
                         {created ? formatDateTime(created) : "—"}
                       </td>
                       <td className="px-4 py-3 text-table-body text-secondary">
                         <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-colors"
+                            onClick={() => openLedgerDialog(customer)}
+                            title="Update Ledger"
+                          >
+                            <Wallet className="h-3 w-3" />
+                          </button>
                           <button
                             type="button"
                             className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-colors"
@@ -441,6 +517,36 @@ export default function CustomersList() {
                 placeholder="Optional address"
               />
             </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground" htmlFor="customer-debit">
+                Debit Amount (৳)
+              </label>
+              <Input
+                id="customer-debit"
+                type="number"
+                min="0"
+                step="0.01"
+                value={debit}
+                onChange={(e) => setDebit(e.target.value)}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">Amount this customer owes you</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground" htmlFor="customer-credit">
+                Credit Amount (৳)
+              </label>
+              <Input
+                id="customer-credit"
+                type="number"
+                min="0"
+                step="0.01"
+                value={credit}
+                onChange={(e) => setCredit(e.target.value)}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">Amount you owe this customer</p>
+            </div>
           </div>
           <SheetFooter className="mt-6">
             <Button
@@ -484,6 +590,66 @@ export default function CustomersList() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Ledger Update Dialog */}
+      <Dialog open={isLedgerDialogOpen} onOpenChange={setIsLedgerDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Ledger — {ledgerCustomer?.name}</DialogTitle>
+            <DialogDescription>
+              Adjust the debit and credit amounts for this customer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground" htmlFor="ledger-debit">
+                Debit (৳)
+              </label>
+              <Input
+                id="ledger-debit"
+                type="number"
+                min="0"
+                step="0.01"
+                value={ledgerDebit}
+                onChange={(e) => setLedgerDebit(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground" htmlFor="ledger-credit">
+                Credit (৳)
+              </label>
+              <Input
+                id="ledger-credit"
+                type="number"
+                min="0"
+                step="0.01"
+                value={ledgerCredit}
+                onChange={(e) => setLedgerCredit(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              onClick={() => setIsLedgerDialogOpen(false)}
+              disabled={ledgerMutation.isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleSaveLedger}
+              disabled={ledgerMutation.isPending}
+            >
+              {ledgerMutation.isPending ? "Saving..." : "Save"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
