@@ -355,7 +355,7 @@ export default function OrdersList() {
 
   const { data: productsData } = useQuery({
     queryKey: ["products"],
-    queryFn: () => getProducts({ limit: 100 }),
+    queryFn: () => getProducts({ limit: 9999 }),
   });
 
   const { data: settingsData } = useQuery({
