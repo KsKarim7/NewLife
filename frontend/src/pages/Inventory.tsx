@@ -73,7 +73,7 @@ type CategoryMutationError = {
 type ProductFormValues = {
   name: string;
   category_id: string;
-  stock_qty?: number;
+  stock_qty?: number | string;
   selling_price: string;
   buying_price: string;
   vat_enabled: boolean;
@@ -177,7 +177,7 @@ export default function Inventory() {
     defaultValues: {
       name: "",
       category_id: "",
-      stock_qty: 0,
+      stock_qty: '',
       selling_price: "",
       buying_price: "",
       vat_enabled: false,
@@ -198,7 +198,7 @@ export default function Inventory() {
     productForm.reset({
       name: "",
       category_id: activeCategory ?? "",
-      stock_qty: 0,
+      stock_qty: '',
       selling_price: "",
       buying_price: "",
       vat_enabled: false,
@@ -436,7 +436,7 @@ export default function Inventory() {
       vat_percent: values.vat_enabled ? values.vat_percent : undefined,
       description: values.description || undefined,
       image_url: values.image_url || undefined,
-      stock_qty: values.stock_qty || 0,
+      stock_qty: values.stock_qty === '' ? 0 : Number(values.stock_qty),
     };
 
     if (editingProduct) {
@@ -807,8 +807,11 @@ export default function Inventory() {
                           type="number"
                           min="0"
                           placeholder="0"
-                          value={field.value ?? 0}
-                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === '' ? '' : parseInt(val, 10) || '');
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
