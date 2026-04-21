@@ -5,7 +5,7 @@ const productSchema = new mongoose.Schema(
   {
     product_code: {
       type: String,
-      default: '',
+      sparse: true,
     },
     name: {
       type: String,
