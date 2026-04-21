@@ -326,19 +326,40 @@ export default function Settings() {
     await deactivateUserMutation.mutateAsync(userToDeactivate._id);
   };
 
+  // Change Email mutation
+  const changeEmailMutation = useMutation({
+    mutationFn: async (newEmail: string) => {
+      const response = await axiosClient.patch('/auth/me/email', { newEmail });
+      if (!response.data?.success) throw new Error(response.data?.message ?? 'Email change failed');
+      return response.data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Email updated. You will be logged out.' });
+      setTimeout(() => {
+        logout();
+        navigate('/login');
+      }, 1500);
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Failed to update email',
+        description: err?.message ?? 'Please try again',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Handle change email
   const handleChangeEmail = async () => {
     if (!changeEmailEmail) {
       toast({ title: "Email is required", variant: "destructive" });
       return;
     }
-    // In a real implementation, this would call an API
-    // For now, we'll show that it's redirecting to login
-    toast({ title: "Email updated. You will be logged out." });
-    setTimeout(() => {
-      logout();
-      navigate("/login");
-    }, 2000);
+    if (changeEmailEmail === user?.email) {
+      toast({ title: "This is already your current email", variant: "destructive" });
+      return;
+    }
+    changeEmailMutation.mutate(changeEmailEmail);
   };
 
   // Change Password mutation
@@ -591,13 +612,14 @@ export default function Settings() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Current Email</Label>
-                  <Input value={changeEmailEmail} disabled className="bg-gray-100" />
+                  <Input value={user?.email || ''} disabled className="bg-gray-100" />
                 </div>
                 <div className="space-y-2">
                   <Label>New Email</Label>
-                  <Input type="email" placeholder="newemail@example.com" onChange={(e) => setChangeEmailEmail(e.target.value)} />
+                  <Input type="email" placeholder="newemail@example.com" value={changeEmailEmail} onChange={(e) => setChangeEmailEmail(e.target.value)} />
                 </div>
-                <Button onClick={handleChangeEmail} className="w-full">
+                <Button onClick={handleChangeEmail} disabled={changeEmailMutation.isPending} className="w-full">
+                  {changeEmailMutation.isPending ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : null}
                   Update Email
                 </Button>
               </CardContent>

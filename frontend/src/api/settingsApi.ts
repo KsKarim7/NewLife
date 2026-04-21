@@ -202,3 +202,17 @@ export const deactivateUser = async (id: string): Promise<User> => {
 
   return normalizeUser(response.data.data);
 };
+
+// Email Update API
+export const updateEmail = async (newEmail: string): Promise<{ success: boolean; message: string }> => {
+  const response = await axiosClient.patch("/auth/me/email", { newEmail });
+
+  if (!response.data?.success) {
+    throw new Error(response.data?.message || "Failed to update email");
+  }
+
+  return {
+    success: response.data.success,
+    message: response.data.message,
+  };
+};

@@ -212,37 +212,55 @@ exports.changeOwnPassword = async (req, res) => {
 };
 
 exports.changeOwnEmail = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg,
+      });
+    }
+
+    const { newEmail } = req.body;
+    const user = req.user;
+
+    // Check if email already exists
+    const existingUser = await User.findOne({
+      email: newEmail.toLowerCase(),
+      _id: { $ne: user._id },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: 'Email already in use',
+      });
+    }
+
+    user.email = newEmail.toLowerCase();
+    // Clear refresh token so all sessions are invalidated after email change
+    user.refreshToken = null;
+    await user.save();
+
+    // Clear auth cookies so the frontend logs the user out
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    return res.json({
+      success: true,
+      message: 'Email changed successfully',
+    });
+  } catch (err) {
+    console.error('changeOwnEmail error:', err.message, err.stack);
+    return res.status(500).json({
       success: false,
-      message: errors.array()[0].msg,
+      message: err.message ?? 'Server error',
     });
   }
-
-  const { newEmail } = req.body;
-  const user = req.user;
-
-  // Check if email already exists
-  const existingUser = await User.findOne({
-    email: newEmail.toLowerCase(),
-    _id: { $ne: user._id },
-  });
-
-  if (existingUser) {
-    return res.status(409).json({
-      success: false,
-      message: 'Email already in use',
-    });
-  }
-
-  user.email = newEmail.toLowerCase();
-  await user.save();
-
-  return res.json({
-    success: true,
-    message: 'Email changed successfully',
-  });
 };
 
 exports.changeOwnName = async (req, res) => {
