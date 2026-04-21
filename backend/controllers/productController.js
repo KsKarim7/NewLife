@@ -43,8 +43,9 @@ exports.getAllProducts = async (req, res) => {
     filter.category_id = category_id;
   }
 
-  if (search && search.trim()) {
-    filter.$text = { $search: search.trim() };
+  if (search && search.trim() !== '') {
+    const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.name = { $regex: escaped, $options: 'i' };
   }
 
   const total = await Product.countDocuments(filter);
