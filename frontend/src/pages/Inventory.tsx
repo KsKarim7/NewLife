@@ -741,7 +741,7 @@ export default function Inventory() {
         ))}
       </div>
       <Sheet open={isProductSheetOpen} onOpenChange={(open) => !open && handleCloseProductSheet()}>
-        <SheetContent side="right" className="w-full sm:max-w-sm">
+        <SheetContent side="right" className="w-full sm:max-w-sm flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>{editingProduct ? "Edit Product" : "Add Product"}</SheetTitle>
             <SheetDescription>
@@ -750,7 +750,7 @@ export default function Inventory() {
                 : "Create a new product in your inventory."}
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-3 flex-1 overflow-y-auto">
             <Form {...productForm}>
               <form
                 className="space-y-3"

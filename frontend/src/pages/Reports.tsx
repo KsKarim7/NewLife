@@ -76,14 +76,14 @@ function ReportCard({ name, description, module }: ReportCardConfig) {
           <span>Date range</span>
         </div>
       </div>
-      <div className="mt-2 mb-3 flex items-center gap-2">
+      <div className="mt-2 mb-3 flex flex-col md:flex-row md:items-center gap-2">
         <Input
           type="date"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
           className="h-9 text-xs md:text-sm"
         />
-        <span className="text-xs text-muted-foreground">to</span>
+        <span className="text-xs text-muted-foreground hidden md:inline">to</span>
         <Input
           type="date"
           value={to}

@@ -656,14 +656,14 @@ export default function Settings() {
 
       {/* Create User Sheet */}
       <Sheet open={isCreateUserSheetOpen} onOpenChange={setIsCreateUserSheetOpen}>
-        <SheetContent>
+        <SheetContent className="flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Create New User</SheetTitle>
             <SheetDescription className="sr-only">
               Form to create a new user account with name, email, role, and password
             </SheetDescription>
           </SheetHeader>
-          <div className="space-y-4 mt-6">
+          <div className="space-y-4 mt-6 flex-1 overflow-y-auto">
             <div className="space-y-2">
               <Label>Name</Label>
               <Input value={newUserForm.name} onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })} placeholder="John Doe" />
@@ -702,14 +702,14 @@ export default function Settings() {
 
       {/* Edit User Sheet */}
       <Sheet open={isEditUserSheetOpen} onOpenChange={setIsEditUserSheetOpen}>
-        <SheetContent>
+        <SheetContent className="flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Edit User</SheetTitle>
             <SheetDescription className="sr-only">
               Form to edit user name and phone information
             </SheetDescription>
           </SheetHeader>
-          <div className="space-y-4 mt-6">
+          <div className="space-y-4 mt-6 flex-1 overflow-y-auto">
             <div className="space-y-2">
               <Label>Email (Read-only)</Label>
               <Input value={selectedUserForEdit?.email || ""} disabled className="bg-gray-100" />

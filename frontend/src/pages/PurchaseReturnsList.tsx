@@ -291,8 +291,8 @@ export default function PurchaseReturnsList() {
         <StatCard label="Total Units Returned" value={totalQtyReturned.toString()} subtitle={`${totalReturns} returns · ${periodLabel}`} icon={Package} iconColor="text-success" iconBg="bg-success/10" />
       </div>
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="hidden md:flex items-center gap-2">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')}>
             <FileText className="h-4 w-4 mr-1" /> Export PDF
           </Button>
@@ -392,7 +392,7 @@ export default function PurchaseReturnsList() {
 
       {/* Create Return Sheet */}
       <Sheet open={isCreateSheetOpen} onOpenChange={setIsCreateSheetOpen}>
-        <SheetContent side="right" className="w-full sm:w-[540px] flex flex-col">
+        <SheetContent side="right" className="w-full sm:w-[540px] flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Create Purchase Return</SheetTitle>
             <SheetDescription>Record products being returned to the supplier</SheetDescription>

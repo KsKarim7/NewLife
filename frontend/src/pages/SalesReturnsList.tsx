@@ -426,13 +426,13 @@ export default function SalesReturnsList() {
 
       {/* Create Return Sheet */}
       <Sheet open={isCreateSheetOpen} onOpenChange={setIsCreateSheetOpen}>
-        <SheetContent side="right" className="w-full md:w-[600px] overflow-y-auto">
+        <SheetContent side="right" className="w-full md:w-[600px] flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Create Sales Return</SheetTitle>
             <SheetDescription>Record a return from a customer</SheetDescription>
           </SheetHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 flex-1 overflow-y-auto">
             {/* Customer Information */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Customer Name *</label>

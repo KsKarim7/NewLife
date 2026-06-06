@@ -821,7 +821,7 @@ export default function OrdersList() {
       </div>
 
       <div className="flex items-center justify-between mb-4 gap-2">
-        <div className="hidden md:flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')}><FileText className="h-4 w-4 mr-1" /> Export PDF</Button>
           <Button variant="outline" size="sm" onClick={() => handleExportData('excel')}><FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel</Button>
         </div>
@@ -896,7 +896,7 @@ export default function OrdersList() {
                       <StatusBadge status={orderStatusToStatusType(o.status)} />
                     </td>
                     <td className="px-4 py-3 text-table-body">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <Button
                           size="sm"
                           variant="outline"
@@ -1007,14 +1007,14 @@ export default function OrdersList() {
 
       {/* Create Order Sheet */}
       <Sheet open={isSheetOpen} onOpenChange={(open) => !open && closeSheet()}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Create New Order</SheetTitle>
             <SheetDescription>
               Create a new order by adding customer details and products.
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4 flex-1 overflow-y-auto">
             {/* Customer Information */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Customer Name *</label>
@@ -1183,7 +1183,7 @@ export default function OrdersList() {
 
       {/* View Order Sheet */}
       <Sheet open={viewingOrder !== null} onOpenChange={(open) => !open && setViewingOrder(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Order Details</SheetTitle>
             <SheetDescription>
@@ -1192,7 +1192,7 @@ export default function OrdersList() {
           </SheetHeader>
 
           {viewingOrder && (
-            <div className="mt-6 space-y-6">
+            <div className="mt-6 space-y-6 flex-1 overflow-y-auto">
               {/* Order Header */}
               <div className="space-y-2 border-b pb-4">
                 <div className="flex items-center justify-between">
@@ -1214,7 +1214,7 @@ export default function OrdersList() {
               {/* Line Items */}
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Items</p>
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg overflow-hidden overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50 border-b">
                       <tr>

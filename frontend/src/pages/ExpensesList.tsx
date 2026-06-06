@@ -311,23 +311,21 @@ export default function ExpensesList() {
       </div>
 
       {/* Filters and Add button */}
-      <div className="flex items-center justify-end gap-2 mb-4">
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="hidden md:flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')}>
-              <FileText className="h-4 w-4 mr-1" /> Export PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExportData('excel')}>
-              <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
-            </Button>
-          </div>
-          <Button
-            onClick={handleCreateOpen}
-            className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Add Expense
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => handleExportData('pdf')}>
+            <FileText className="h-4 w-4 mr-1" /> Export PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExportData('excel')}>
+            <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
           </Button>
         </div>
+        <Button
+          onClick={handleCreateOpen}
+          className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4 mr-1" /> Add Expense
+        </Button>
       </div>
 
       {/* Desktop table */}

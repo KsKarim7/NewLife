@@ -185,21 +185,21 @@ export function Header({
 
           {/* Custom date range inputs — show only when custom is selected */}
           {showPeriodFilter && period === "custom" && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row md:items-center gap-2">
               <Input
                 type="date"
                 value={customFrom ?? ""}
                 onChange={(e) => setCustomFrom(e.target.value)}
                 placeholder="From"
-                className="h-9 text-sm w-32"
+                className="h-9 text-sm w-full md:w-32"
               />
-              <span className="text-xs text-muted-foreground">to</span>
+              <span className="text-xs text-muted-foreground hidden md:inline">to</span>
               <Input
                 type="date"
                 value={customTo ?? ""}
                 onChange={(e) => setCustomTo(e.target.value)}
                 placeholder="To"
-                className="h-9 text-sm w-32"
+                className="h-9 text-sm w-full md:w-32"
               />
             </div>
           )}

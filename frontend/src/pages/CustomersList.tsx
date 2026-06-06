@@ -463,7 +463,7 @@ export default function CustomersList() {
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={(open) => !open && closeSheet()}>
-        <SheetContent side="right" className="w-full sm:max-w-sm">
+        <SheetContent side="right" className="w-full sm:max-w-sm flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>{editingCustomer ? "Edit Customer" : "Add Customer"}</SheetTitle>
             <SheetDescription>
@@ -472,7 +472,7 @@ export default function CustomersList() {
                 : "Create a new customer record."}
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-3 flex-1 overflow-y-auto">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground" htmlFor="customer-name">
                 Name

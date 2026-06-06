@@ -579,7 +579,7 @@ export default function PurchasesList() {
                       <StatusBadge status={purchaseStatusToStatusType(p.status ?? 'Unpaid')} />
                     </td>
                     <td className="px-4 py-3 text-table-body">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <Button
                           size="sm"
                           variant="outline"
@@ -682,13 +682,13 @@ export default function PurchasesList() {
 
       {/* Create Purchase Sheet */}
       <Sheet open={isCreateSheetOpen} onOpenChange={setIsCreateSheetOpen}>
-        <SheetContent side="right" className="w-full md:w-[600px] overflow-y-auto">
+        <SheetContent side="right" className="w-full md:w-[600px] flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Add Purchase</SheetTitle>
             <SheetDescription>Record new stock replenishment</SheetDescription>
           </SheetHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 flex-1 overflow-y-auto">
             {/* Purchase Date */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Purchase Date</label>
@@ -990,7 +990,7 @@ export default function PurchasesList() {
 
       {/* View Purchase Sheet */}
       <Sheet open={viewingPurchase !== null} onOpenChange={(open) => !open && setViewingPurchase(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle>Purchase Details</SheetTitle>
             <SheetDescription>
@@ -999,7 +999,7 @@ export default function PurchasesList() {
           </SheetHeader>
 
           {viewingPurchase && (
-            <div className="mt-6 space-y-6">
+            <div className="mt-6 space-y-6 flex-1 overflow-y-auto">
               {/* Purchase Header */}
               <div className="space-y-2 border-b pb-4">
                 <div className="flex items-center justify-between">
@@ -1014,7 +1014,7 @@ export default function PurchasesList() {
               {/* Line Items */}
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Items {viewingPurchase.has_returns && <span className="text-warning">({viewingPurchase.total_return_count} returned)</span>}</p>
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg overflow-hidden overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50 border-b">
                       <tr>
