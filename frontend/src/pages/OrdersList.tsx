@@ -655,15 +655,6 @@ export default function OrdersList() {
   };
 
   const handleSubmitOrder = () => {
-    if (!customerName.trim() || !customerPhone.trim()) {
-      toast({
-        title: "Validation error",
-        description: "Customer name and phone are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (orderLines.length === 0 || orderLines.some(l => !l.product_id || !l.unit_price)) {
       toast({
         title: "Validation error",
@@ -1017,19 +1008,19 @@ export default function OrdersList() {
           <div className="mt-4 space-y-4 flex-1 overflow-y-auto">
             {/* Customer Information */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Customer Name *</label>
+              <label className="text-sm font-medium text-foreground">Customer Name</label>
               <Input
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Enter customer name"
+                placeholder="Enter customer name (optional)"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Customer Phone *</label>
+              <label className="text-sm font-medium text-foreground">Customer Phone</label>
               <Input
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="Enter phone number"
+                placeholder="Enter phone number (optional)"
               />
             </div>
 
@@ -1096,7 +1087,7 @@ export default function OrdersList() {
               type="button"
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleSubmitOrder}
-              disabled={createOrderMutation.isPending || !customerName.trim() || !customerPhone.trim()}
+              disabled={createOrderMutation.isPending}
             >
               {createOrderMutation.isPending ? "Creating..." : "Create Order"}
             </Button>

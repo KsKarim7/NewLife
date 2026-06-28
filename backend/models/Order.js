@@ -36,8 +36,8 @@ const orderSchema = new mongoose.Schema(
     },
     customer: {
       customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-      name: { type: String },
-      phone: { type: String },
+      name: { type: String, default: '' },
+      phone: { type: String, default: '' },
     },
     lines: [orderLineSchema],
     subtotal_paisa: { type: mongoose.Schema.Types.Long },

@@ -291,21 +291,18 @@ exports.createOrder = async (req, res) => {
         name: customer.name,
         phone: customer.phone,
       };
-    } else if (customer_name) {
+    } else if (customer_name || customer_phone) {
       customerSnapshot = {
         customer_id: undefined,
-        name: customer_name,
-        phone: customer_phone,
+        name: customer_name || '',
+        phone: customer_phone || '',
       };
     } else {
-      if (useTransaction) {
-        await session.abortTransaction();
-      }
-      session.endSession();
-      return res.status(400).json({
-        success: false,
-        message: 'Customer information is required',
-      });
+      customerSnapshot = {
+        customer_id: undefined,
+        name: '',
+        phone: '',
+      };
     }
 
     const orderLines = [];
