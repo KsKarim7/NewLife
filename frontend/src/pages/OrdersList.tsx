@@ -193,7 +193,7 @@ function OrderLineRow({
                     }}
                   >
                     <div className="flex flex-col w-full">
-                      <span className="text-sm font-medium">{product.name}</span>
+                      <span className="text-sm font-medium">{product.name} - {product.stock_qty ?? 0}</span>
                       <span className="text-xs text-muted-foreground">{product.product_code}</span>
                     </div>
                   </CommandItem>
