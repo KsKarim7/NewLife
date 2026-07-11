@@ -57,6 +57,7 @@ exports.getAllPurchases = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
   const { from, to, status } = req.query;
+  const search = req.query.search;
 
   let filter = { is_deleted: false };
   let hasStatusOr = false;
@@ -105,7 +106,41 @@ exports.getAllPurchases = async (req, res) => {
   }
 
   // Combine filters properly: if both $or and $expr exist, use explicit $and
-  if (hasStatusOr && exprCondition) {
+  if (search && search.trim() !== '') {
+    const searchRegex = { $regex: search.trim(), $options: 'i' };
+    const searchCondition = {
+      $or: [
+        { party_name: searchRegex },
+        { 'lines.product_name': searchRegex },
+      ],
+    };
+
+    if (hasStatusOr && exprCondition) {
+      filter = {
+        is_deleted: false,
+        $and: [
+          searchCondition,
+          statusOrCondition,
+          { $expr: exprCondition }
+        ]
+      };
+    } else if (hasStatusOr) {
+      filter = {
+        is_deleted: false,
+        $and: [searchCondition, statusOrCondition],
+      };
+    } else if (exprCondition) {
+      filter = {
+        is_deleted: false,
+        $and: [searchCondition, { $expr: exprCondition }],
+      };
+    } else {
+      filter = {
+        is_deleted: false,
+        ...searchCondition,
+      };
+    }
+  } else if (hasStatusOr && exprCondition) {
     filter = {
       is_deleted: false,
       $and: [

@@ -41,6 +41,7 @@ exports.getAllExpenses = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
   const { from, to } = req.query;
+  const search = req.query.search;
 
   const filter = { is_deleted: false };
 
@@ -65,6 +66,14 @@ exports.getAllExpenses = async (req, res) => {
     } else if (conditions.length === 2) {
       filter.$expr = { $and: conditions };
     }
+  }
+
+  if (search && search.trim() !== '') {
+    const searchRegex = { $regex: search.trim(), $options: 'i' };
+    filter.$or = [
+      { description: searchRegex },
+      { party_name: searchRegex },
+    ];
   }
 
   const total = await Expense.countDocuments(filter);

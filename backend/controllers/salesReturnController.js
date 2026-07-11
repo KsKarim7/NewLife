@@ -17,6 +17,7 @@ exports.getAllSalesReturns = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
   const { from, to, customer_id } = req.query;
+  const search = req.query.search;
 
   const filter = {};
 
@@ -45,6 +46,15 @@ exports.getAllSalesReturns = async (req, res) => {
 
   if (customer_id) {
     filter['customer.customer_id'] = customer_id;
+  }
+
+  if (search && search.trim() !== '') {
+    const searchRegex = { $regex: search.trim(), $options: 'i' };
+    filter.$or = [
+      { return_number: searchRegex },
+      { original_order_ref: searchRegex },
+      { 'customer.name': searchRegex },
+    ];
   }
 
   const total = await SalesReturn.countDocuments(filter);

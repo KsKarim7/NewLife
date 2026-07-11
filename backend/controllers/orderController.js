@@ -71,6 +71,7 @@ exports.getAllOrders = async (req, res) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
   const { status, from, to, customer_id } = req.query;
+  const search = req.query.search;
 
   const filter = { is_deleted: false };
 
@@ -103,6 +104,14 @@ exports.getAllOrders = async (req, res) => {
 
   if (customer_id) {
     filter['customer.customer_id'] = customer_id;
+  }
+
+  if (search && search.trim() !== '') {
+    const searchRegex = { $regex: search.trim(), $options: 'i' };
+    filter.$or = [
+      { order_number: searchRegex },
+      { 'customer.name': searchRegex },
+    ];
   }
 
   const total = await Order.countDocuments(filter);
