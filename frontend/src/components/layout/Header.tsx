@@ -156,7 +156,11 @@ export function Header({
             <Switch
               checked={nextDayMode}
               disabled={isLoadingNextDayMode}
-              onCheckedChange={handleToggleNextDayMode}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void handleToggleNextDayMode(!nextDayMode);
+              }}
               className={nextDayMode ? "bg-destructive data-[state=checked]:bg-destructive" : "bg-emerald-500"}
             />
           </div>
