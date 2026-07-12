@@ -239,25 +239,45 @@ export function printViaWindowPrint(
       width: 58mm;
       max-width: 58mm;
       overflow-x: hidden;
+      box-sizing: border-box;
     }
     body {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 10px;
-      line-height: 1.3;
+      font-size: 12px;
+      line-height: 1.35;
       padding: 1mm 2mm;
-      background: white;
-      color: black;
+      background: #ffffff;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      width: 58mm;
+      max-width: 58mm;
+      box-sizing: border-box;
+      overflow: hidden;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     pre {
-      white-space: pre;
+      white-space: pre-wrap;
       overflow: hidden;
       font-family: 'Courier New', Courier, monospace;
-      font-size: 10px;
-      line-height: 1.3;
+      font-size: 12px;
+      line-height: 1.35;
       width: 100%;
       max-width: 100%;
-      word-break: normal;
-      overflow-wrap: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      box-sizing: border-box;
+      color: #000000 !important;
+      font-weight: bold !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    * {
+      color: #000000 !important;
+      font-weight: bold !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     @media print {
       @page {
@@ -266,8 +286,22 @@ export function printViaWindowPrint(
         margin: 0;
       }
       html, body {
-        width: 58mm;
-        max-width: 58mm;
+        width: 58mm !important;
+        max-width: 58mm !important;
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+      }
+      * {
+        color: #000000 !important;
+        font-weight: bold !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-sizing: border-box !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
       }
     }
   `;
