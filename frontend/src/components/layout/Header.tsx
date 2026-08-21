@@ -83,6 +83,8 @@ export function Header({
   }, [nextDayMode, toast]);
 
   const handleToggleNextDayMode = async (checked: boolean) => {
+    if (isLoadingNextDayMode) return;
+    setIsLoadingNextDayMode(true);
     setNextDayModeState(checked);
     try {
       const state = await setNextDayMode(checked);
@@ -95,10 +97,16 @@ export function Header({
       });
     } catch (error) {
       setNextDayModeState(!checked);
+      const response = (error as {
+        response?: { status?: number; data?: { message?: string } };
+      }).response;
       toast({
         title: "Failed to update Next Day Mode",
+        description: `Failed: ${response?.status ?? "Unknown"} - ${response?.data?.message ?? (error instanceof Error ? error.message : "Unknown error")}`,
         variant: "destructive",
       });
+    } finally {
+      setIsLoadingNextDayMode(false);
     }
   };
 
