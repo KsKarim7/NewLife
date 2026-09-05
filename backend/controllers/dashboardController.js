@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const InventoryTransaction = require('../models/InventoryTransaction');
 const Category = require('../models/Category');
+const Settings = require('../models/Settings');
 const { toLocalStartOfDay, toLocalEndOfDay } = require('../utils/dateUtils');
 
 const paisaToTakaString = (value) => {
@@ -11,8 +12,7 @@ const paisaToTakaString = (value) => {
   return (num / 100).toFixed(2);
 };
 
-const getDateRange = (period, from, to) => {
-  const now = new Date();
+const getDateRange = (period, from, to, now = new Date()) => {
   let startCurrent;
   let endCurrent = new Date(now);
   endCurrent.setHours(23, 59, 59, 999);
@@ -43,27 +43,27 @@ const getDateRange = (period, from, to) => {
   return { startCurrent, endCurrent, days: 7 };
 };
 
-const getStartOfToday = () => {
-  const d = new Date();
+const getStartOfToday = (now = new Date()) => {
+  const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   return d;
 };
 
-const getEndOfToday = () => {
-  const d = new Date();
+const getEndOfToday = (now = new Date()) => {
+  const d = new Date(now);
   d.setHours(23, 59, 59, 999);
   return d;
 };
 
-const getStartOfMonth = () => {
-  const d = new Date();
+const getStartOfMonth = (now = new Date()) => {
+  const d = new Date(now);
   d.setDate(1);
   d.setHours(0, 0, 0, 0);
   return d;
 };
 
-const getEndOfMonth = () => {
-  const d = new Date();
+const getEndOfMonth = (now = new Date()) => {
+  const d = new Date(now);
   d.setMonth(d.getMonth() + 1);
   d.setDate(0);
   d.setHours(23, 59, 59, 999);
@@ -76,12 +76,17 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const period = req.query.period || '7d';
     const { from, to } = req.query;
+    const settings = await Settings.findOne({}).lean();
+    const effectiveNow = new Date();
+    if (settings?.next_day_mode) {
+      effectiveNow.setDate(effectiveNow.getDate() + 1);
+    }
 
     // Debug: Log time ranges
-    console.log('Today start:', getStartOfToday());
-    console.log('Today end:', getEndOfToday());
-    console.log('Month start:', getStartOfMonth());
-    console.log('Month end:', getEndOfMonth());
+    console.log('Today start:', getStartOfToday(effectiveNow));
+    console.log('Today end:', getEndOfToday(effectiveNow));
+    console.log('Month start:', getStartOfMonth(effectiveNow));
+    console.log('Month end:', getEndOfMonth(effectiveNow));
 
     // Get all stats with detailed error handling
     const totalProductsPromise = Product.countDocuments({ is_deleted: false })
@@ -104,7 +109,7 @@ exports.getDashboardStats = async (req, res) => {
       },
       {
         $match: {
-          effective_date: { $gte: getStartOfToday(), $lte: getEndOfToday() },
+          effective_date: { $gte: getStartOfToday(effectiveNow), $lte: getEndOfToday(effectiveNow) },
           status: 'Paid',
           is_deleted: false,
         },
@@ -128,7 +133,7 @@ exports.getDashboardStats = async (req, res) => {
               {
                 $ifNull: ['$accounting_date', '$createdAt'],
               },
-              getStartOfMonth(),
+              getStartOfMonth(effectiveNow),
             ],
           },
           {
@@ -136,7 +141,7 @@ exports.getDashboardStats = async (req, res) => {
               {
                 $ifNull: ['$accounting_date', '$createdAt'],
               },
-              getEndOfMonth(),
+              getEndOfMonth(effectiveNow),
             ],
           },
         ],
@@ -180,7 +185,7 @@ exports.getDashboardStats = async (req, res) => {
       low_stock_count,
     });
 
-    const { startCurrent, endCurrent, days } = getDateRange(period, from, to);
+    const { startCurrent, endCurrent, days } = getDateRange(period, from, to, effectiveNow);
 
     const startPrevious = new Date(startCurrent);
     startPrevious.setDate(startPrevious.getDate() - days);
