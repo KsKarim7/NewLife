@@ -19,6 +19,7 @@ export interface Expense {
   is_deleted: boolean;
   createdAt: string;
   updatedAt: string;
+  accounting_date?: string;
 }
 
 export interface CreateExpensePayload {

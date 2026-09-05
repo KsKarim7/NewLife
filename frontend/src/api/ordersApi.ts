@@ -35,6 +35,7 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   has_return?: boolean;
+  accounting_date?: string;
 }
 
 export interface OrdersResponse {
@@ -95,6 +96,7 @@ const normalizeOrder = (item: Partial<Order> & Record<string, unknown>): Order =
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     has_return: item.has_return === true,
+    accounting_date: item.accounting_date as string | undefined,
   };
 };
 

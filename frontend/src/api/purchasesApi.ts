@@ -25,6 +25,7 @@ export interface Purchase {
   updatedAt: string;
   has_returns?: boolean;
   total_return_count?: number;
+  accounting_date?: string;
 }
 
 export interface PurchasesResponse {
@@ -85,6 +86,7 @@ const normalizePurchase = (
     updatedAt: item.updatedAt,
     has_returns: item.has_returns,
     total_return_count: item.total_return_count,
+    accounting_date: item.accounting_date as string | undefined,
   };
 };
 

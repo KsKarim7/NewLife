@@ -12,9 +12,10 @@ function toLocalDateString(date: Date): string {
 /**
  * Converts a period string to a date range with ISO date strings
  * @param period - The period value: "all", "today", "7d", "30d", "month", or "custom"
+ * @param isNextDay - When true, shifts the computed range forward by 1 day (Next Day Mode)
  * @returns Object with from and to ISO date strings (YYYY-MM-DD), or null if period is "custom"
  */
-export function getPeriodDateRange(period: string): { from: string; to: string } | null {
+export function getPeriodDateRange(period: string, isNextDay: boolean = false): { from: string; to: string } | null {
   if (period === 'all') {
     return { from: '', to: '' };
   }
@@ -24,6 +25,9 @@ export function getPeriodDateRange(period: string): { from: string; to: string }
   }
 
   const today = new Date();
+  if (isNextDay) {
+    today.setDate(today.getDate() + 1);
+  }
   today.setHours(0, 0, 0, 0);
 
   const toDate = new Date(today);

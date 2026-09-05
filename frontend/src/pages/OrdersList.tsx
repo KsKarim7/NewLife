@@ -62,6 +62,7 @@ import { getOrders, type Order, type OrdersResponse, createOrder, type CreateOrd
 import { getCustomers, type Customer } from "@/api/customersApi";
 import { getProducts, type Product } from "@/api/productsApi";
 import { getSettings } from "@/api/settingsApi";
+import { getNextDayMode } from "@/api/nextDayApi";
 import {
   printViaUSB,
   printViaBluetooth,
@@ -304,11 +305,16 @@ export default function OrdersList() {
 
   const { toast } = useToast();
 
+  const { data: nextDayModeData } = useQuery({
+    queryKey: ["nextDayMode"],
+    queryFn: getNextDayMode,
+  });
+
   const getDateRange = () => {
     if (period === "custom") {
       return { from: customFrom, to: customTo };
     }
-    const range = getPeriodDateRange(period);
+    const range = getPeriodDateRange(period, nextDayModeData?.next_day_mode ?? false);
     return range || { from: "", to: "" };
   };
 
@@ -875,7 +881,7 @@ export default function OrdersList() {
                 filteredOrders.map((o, i) => (
                   <tr key={o._id} className={`border-b border-border last:border-0 hover:bg-row-hover transition-colors ${i % 2 === 1 ? 'bg-muted/20' : ''}`}>
                     <td className="px-4 py-3 text-table-body font-medium text-secondary">{o.order_number}</td>
-                    <td className="px-4 py-3 text-table-body text-muted-foreground">{formatDate(o.createdAt)}</td>
+                    <td className="px-4 py-3 text-table-body text-muted-foreground">{formatDate(o.accounting_date || o.createdAt)}</td>
                     <td className="px-4 py-3 text-table-body text-card-foreground">{o.customer.name}</td>
                     <td className="px-4 py-3 text-table-body text-muted-foreground">{o.lines.length}</td>
                     <td className="px-4 py-3 text-table-body font-medium">{formatCurrency(toPriceNumber(o.total_paisa))}</td>
@@ -948,7 +954,7 @@ export default function OrdersList() {
                   <p className="font-semibold text-sm text-secondary">{o.order_number}</p>
                   <p className="text-xs text-muted-foreground">{o.customer.name}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(o.accounting_date || o.createdAt)}</p>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

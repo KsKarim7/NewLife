@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePeriod } from "@/context/PeriodContext";
 import { getPurchases, createPurchase, addPurchasePayment, cancelPurchase, type Purchase, type PurchasesResponse } from "@/api/purchasesApi";
 import { getProducts as fetchProducts } from "@/api/productsApi";
+import { getNextDayMode } from "@/api/nextDayApi";
 import {
   Sheet,
   SheetContent,
@@ -115,11 +116,16 @@ export default function PurchasesList() {
   const [productSearch, setProductSearch] = useState('');
   const [productPopoverOpen, setProductPopoverOpen] = useState(false);
 
+  const { data: nextDayModeData } = useQuery({
+    queryKey: ["nextDayMode"],
+    queryFn: getNextDayMode,
+  });
+
   const getQueryDateRange = () => {
     if (period === "custom") {
       return { from: customFrom, to: customTo };
     }
-    const range = getPeriodDateRange(period);
+    const range = getPeriodDateRange(period, nextDayModeData?.next_day_mode ?? false);
     return range || { from: "", to: "" };
   };
 
@@ -637,7 +643,7 @@ export default function PurchasesList() {
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="font-semibold text-sm text-secondary">{p.purchase_number}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(p.date)}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(p.accounting_date || p.date)}</p>
                 </div>
                 <StatusBadge status={purchaseStatusToStatusType(p.status ?? 'Unpaid')} />
               </div>
@@ -1005,7 +1011,7 @@ export default function PurchasesList() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Date</p>
-                    <p className="font-medium">{formatDateTime(viewingPurchase.date)}</p>
+                    <p className="font-medium">{formatDateTime(viewingPurchase.accounting_date || viewingPurchase.date)}</p>
                   </div>
                   <StatusBadge status={purchaseStatusToStatusType(viewingPurchase.status)} />
                 </div>

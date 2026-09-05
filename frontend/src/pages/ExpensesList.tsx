@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getExpenses, createExpense, updateExpense, deleteExpense, type Expense, type ExpensesResponse } from "@/api/expensesApi";
+import { getNextDayMode } from "@/api/nextDayApi";
 
 interface AxiosErrorResponse {
   response?: {
@@ -59,11 +60,16 @@ export default function ExpensesList() {
   // Delete dialog state
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
 
+  const { data: nextDayModeData } = useQuery({
+    queryKey: ["nextDayMode"],
+    queryFn: getNextDayMode,
+  });
+
   const getQueryDateRange = () => {
     if (period === "custom") {
       return { from: customFrom, to: customTo };
     }
-    const range = getPeriodDateRange(period);
+    const range = getPeriodDateRange(period, nextDayModeData?.next_day_mode ?? false);
     return range || { from: "", to: "" };
   };
 
@@ -372,7 +378,7 @@ export default function ExpensesList() {
                       }`}
                     >
                       <td className="px-4 py-3 text-table-body text-muted-foreground">
-                        {formatDate(e.date)}
+                        {formatDate(e.accounting_date || e.date)}
                       </td>
                       <td className="px-4 py-3 text-table-body font-medium">{e.party_name}</td>
                       <td className="px-4 py-3 text-table-body text-muted-foreground text-sm truncate">
@@ -431,7 +437,7 @@ export default function ExpensesList() {
               <div key={e._id} className="bg-card rounded-xl p-4 shadow-sm border border-border">
                 <div className="flex items-start justify-between mb-1">
                   <p className="font-semibold text-sm text-card-foreground">{e.party_name}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(e.date)}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(e.accounting_date || e.date)}</p>
                 </div>
                 <p className="text-xs text-muted-foreground truncate mb-2">{e.description || "—"}</p>
                 <div className="flex items-center justify-between mb-2">
