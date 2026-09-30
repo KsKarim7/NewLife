@@ -83,6 +83,7 @@ export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
   const add = (text: string, opts?: Partial<ReceiptLine>) =>
     lines.push({ text, align: 'left', ...opts });
 
+  add(center('New Life'), { align: 'center', bold: true });
   add(divider);
   add(center(data.storeName), { align: 'center', bold: true });
   add(center(data.storeAddress), { align: 'center' });
