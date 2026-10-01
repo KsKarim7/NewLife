@@ -78,12 +78,20 @@ function summaryRow(label: string, value: string): string {
   return labelPadded + value;
 }
 
+function col(s: string, w: number): string {
+  return s.length > w ? s.substring(0, w) : s.padEnd(w);
+}
+
+function rcol(s: string, w: number): string {
+  return s.length > w ? s.substring(0, w) : s.padStart(w);
+}
+
 export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
   const lines: ReceiptLine[] = [];
   const add = (text: string, opts?: Partial<ReceiptLine>) =>
     lines.push({ text, align: 'left', ...opts });
 
-  add(center('New Life'), { align: 'center', bold: true });
+  add(center('New Life'));
   add(divider);
   add(center(data.storeName), { align: 'center', bold: true });
   add(center(data.storeAddress), { align: 'center' });
@@ -96,32 +104,32 @@ export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
   add(`Order S/N  : ${data.orderNumber}`);
   add(`Invoice ID : ${data.invoiceId}`);
   add(`Date & Time: ${data.dateStr}`);
-  add(`Status     : ${data.statusLabel}`);
+  const statusValue = data.statusLabel.length > 16
+    ? data.statusLabel.substring(0, 16)
+    : data.statusLabel;
+  add(`Status     : ${statusValue}`);
   if (data.customerName) {
-    const name = data.customerName.length > 19
-      ? data.customerName.substring(0, 16) + '...'
+    const name = data.customerName.length > 16
+      ? data.customerName.substring(0, 13) + '...'
       : data.customerName;
     add(`Customer   : ${name}`);
   }
   add(thinDivider);
-  add('ITEM INFO       QTY  PRICE   TOTAL');
+  add(`${col('ITEM', 12)} ${rcol('QTY', 4)} ${rcol('PRICE', 6)} ${rcol('TOTAL', 7)}`);
   add(thinDivider);
 
-  data.items.forEach((item, i) => {
-    const num = `${i + 1}.`;
-    const name = item.name.substring(0, 14 - num.length);
-    const label = (num + name).padEnd(16);
-    const qty = String(item.qty).padStart(3);
-    const price = item.price.replace('Tk ', '').padStart(6);
-    const total = item.total.replace('Tk ', '').padStart(7);
-    add(`${label}${qty} ${price} ${total}`);
+  data.items.forEach((item) => {
+    const qty = String(item.qty);
+    const price = item.price.replace('Tk ', '');
+    const total = item.total.replace('Tk ', '');
+    add(`${col(item.name, 12)} ${rcol(qty, 4)} ${rcol(price, 6)} ${rcol(total, 7)}`);
   });
 
   add(thinDivider);
-  add(summaryRow('TOTAL AMOUNT          :', data.totalAmount));
-  add(summaryRow('PAID AMOUNT           :', data.paidAmount));
+  add(summaryRow('TOTAL : ', data.totalAmount));
+  add(summaryRow('PAID  : ', data.paidAmount));
   add(thinDivider);
-  add(summaryRow('DUE AMOUNT            :', data.dueAmount), { bold: true });
+  add(summaryRow('DUE   : ', data.dueAmount), { bold: true });
   add(divider);
   add(center('Thank you for shopping with us!'), { align: 'center' });
   add(center('Please come visit us again.'), { align: 'center' });
