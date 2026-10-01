@@ -92,6 +92,9 @@ export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
     lines.push({ text, align: 'left', ...opts });
 
   add('            New Life');
+  add('        281-283 No Shop');
+  add('     Dhaka New Market 1205');
+  add('       Phone:01746831809');
   add(divider);
   add(center(data.storeName), { align: 'center', bold: true });
   add(center(data.storeAddress), { align: 'center' });
