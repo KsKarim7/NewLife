@@ -91,7 +91,7 @@ export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
   const add = (text: string, opts?: Partial<ReceiptLine>) =>
     lines.push({ text, align: 'left', ...opts });
 
-  add(center('New Life'));
+  add('            New Life');
   add(divider);
   add(center(data.storeName), { align: 'center', bold: true });
   add(center(data.storeAddress), { align: 'center' });
@@ -115,14 +115,14 @@ export function buildReceiptLines(data: ReceiptData): ReceiptLine[] {
     add(`Customer   : ${name}`);
   }
   add(thinDivider);
-  add(`${col('ITEM', 12)} ${rcol('QTY', 4)} ${rcol('PRICE', 6)} ${rcol('TOTAL', 7)}`);
+  add('ITEM        QTY   PRICE    TOTAL');
   add(thinDivider);
 
   data.items.forEach((item) => {
     const qty = String(item.qty);
     const price = item.price.replace('Tk ', '');
     const total = item.total.replace('Tk ', '');
-    add(`${col(item.name, 12)} ${rcol(qty, 4)} ${rcol(price, 6)} ${rcol(total, 7)}`);
+    add(`${col(item.name, 11)} ${rcol(qty, 3)} ${rcol(price, 7)} ${rcol(total, 8)}`);
   });
 
   add(thinDivider);
@@ -153,6 +153,9 @@ function buildReceiptBytes(lines: ReceiptLine[]): Uint8Array {
   };
 
   push(CMD.INIT);
+  // Blank feed after ESC @ — the D-MAX MPT-II drops content bytes that arrive
+  // in the same packet as the reset command.
+  bytes.push(0x0a);
 
   for (const line of lines) {
     if (line.align === 'center') push(CMD.ALIGN_CENTER);
